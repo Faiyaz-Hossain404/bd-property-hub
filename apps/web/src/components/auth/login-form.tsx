@@ -44,7 +44,7 @@ export function LoginForm() {
     startTransition(async () => {
       try {
         await loginUser(parsed.data)
-        router.replace("/")
+        router.replace("/dashboard")
         router.refresh()
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {

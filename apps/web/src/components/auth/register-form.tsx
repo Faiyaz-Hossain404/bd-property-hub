@@ -59,7 +59,7 @@ export function RegisterForm() {
     startTransition(async () => {
       try {
         await registerUser(parsed.data)
-        router.replace("/")
+        router.replace("/dashboard")
         router.refresh()
       } catch (error) {
         if (error instanceof ApiError && error.status === 409) {

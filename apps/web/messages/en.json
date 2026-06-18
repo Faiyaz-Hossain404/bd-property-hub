@@ -35,6 +35,39 @@
     "errorNetwork": "Can't reach the server. Check your connection and try again.",
     "errorUnexpected": "Something went wrong. Please try again."
   },
+  "dashboard": {
+    "brand": "BD Property Hub",
+    "loading": "Loading your dashboard…",
+    "redirecting": "Redirecting to sign in…",
+    "errorTitle": "Couldn't load your account",
+    "errorBody": "We couldn't reach the server. Check your connection and try again.",
+    "retry": "Try again",
+    "welcome": "Welcome, {name}",
+    "welcomeSubtitle": "Here's your account at a glance. Listings and saved properties are coming next.",
+    "accountTitle": "Your account",
+    "accountDescription": "Details from your verified profile.",
+    "emailLabel": "Email",
+    "emailVerified": "Verified",
+    "emailUnverified": "Unverified",
+    "rolesLabel": "Roles",
+    "statusLabel": "Status",
+    "memberSince": "Member since",
+    "logout": "Sign out",
+    "loggingOut": "Signing out…",
+    "roles": {
+      "super_admin": "Super admin",
+      "admin": "Admin",
+      "customer_support": "Support",
+      "seller": "Seller",
+      "buyer": "Buyer"
+    },
+    "statuses": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "pending_verification": "Pending verification",
+      "deleted": "Deleted"
+    }
+  },
   "home": {
     "badge": "Verified listings · Brokered safely",
     "headline": "Find property in Bangladesh",

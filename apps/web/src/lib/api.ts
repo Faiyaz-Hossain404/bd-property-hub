@@ -49,10 +49,49 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
   return (body as { data: T }).data;
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      // Send the httpOnly session cookie issued by the API on login/register.
+      credentials: 'include',
+    });
+  } catch {
+    throw new ApiError('Network request failed', 0);
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(messageFromBody(body, 'Request failed'), response.status);
+  }
+
+  return (body as { data: T }).data;
+}
+
 export function registerUser(input: RegisterInput): Promise<PublicUser> {
   return postJson<PublicUser>('/auth/register', input);
 }
 
 export function loginUser(input: LoginInput): Promise<PublicUser> {
   return postJson<PublicUser>('/auth/login', input);
+}
+
+// Resolves the current session's user, or throws ApiError(401) when no valid
+// session cookie is present. Drives the client-side auth guard.
+export function getMe(): Promise<PublicUser> {
+  return getJson<PublicUser>('/auth/me');
+}
+
+// Revokes the server session and clears the cookie. Returns nothing useful;
+// callers redirect to /login afterward.
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch {
+    throw new ApiError('Network request failed', 0);
+  }
 }
