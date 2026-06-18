@@ -66,6 +66,46 @@
       "suspended": "স্থগিত",
       "pending_verification": "যাচাই বাকি",
       "deleted": "মুছে ফেলা"
+    },
+    "listings": {
+      "sectionTitle": "আপনার তালিকা",
+      "becomeSellerTitle": "বিডি প্রপার্টি হাবে বিক্রি শুরু করুন",
+      "becomeSellerBody": "প্রপার্টি তালিকা তৈরি ও পরিচালনা করতে বিক্রেতা অ্যাক্সেস চালু করুন।",
+      "becomeSellerCta": "বিক্রেতা হোন",
+      "becomingSeller": "বিক্রেতা অ্যাক্সেস সেটআপ হচ্ছে…",
+      "becomeSellerError": "বিক্রেতা অ্যাক্সেস চালু করা যায়নি। আবার চেষ্টা করুন।",
+      "createTitle": "একটি ড্রাফট তৈরি করুন",
+      "createDescription": "প্রাথমিক তথ্য দিয়ে শুরু করুন — পর্যালোচনার জন্য জমা দেওয়ার আগে ছবি, দাম ও বিস্তারিত যুক্ত করতে পারবেন।",
+      "titleLabel": "শিরোনাম",
+      "titlePlaceholder": "যেমন: গুলশানে ৩ বেডরুম ফ্ল্যাট",
+      "titleRequired": "একটি শিরোনাম লিখুন।",
+      "assetTypeLabel": "প্রপার্টির ধরন",
+      "transactionTypeLabel": "তালিকার ধরন",
+      "createCta": "ড্রাফট তৈরি করুন",
+      "creating": "তৈরি হচ্ছে…",
+      "createError": "ড্রাফট তৈরি করা যায়নি। আবার চেষ্টা করুন।",
+      "loading": "আপনার তালিকা লোড হচ্ছে…",
+      "loadError": "আপনার তালিকা লোড করা যায়নি।",
+      "empty": "এখনো কোনো তালিকা নেই। উপরে আপনার প্রথম ড্রাফট তৈরি করুন।",
+      "assetTypes": {
+        "apartment": "ফ্ল্যাট",
+        "land": "জমি",
+        "building": "বিল্ডিং",
+        "warehouse": "গুদাম",
+        "factory": "কারখানা"
+      },
+      "transactionTypes": {
+        "sale": "বিক্রি",
+        "rent": "ভাড়া",
+        "shared_ownership": "যৌথ মালিকানা"
+      },
+      "publicationStatuses": {
+        "draft": "ড্রাফট",
+        "pending_review": "পর্যালোচনা বাকি",
+        "approved": "অনুমোদিত",
+        "rejected": "প্রত্যাখ্যাত",
+        "archived": "আর্কাইভ"
+      }
     }
   },
   "home": {

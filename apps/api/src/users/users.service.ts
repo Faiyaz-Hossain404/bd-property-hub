@@ -1,7 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import type { Locale, PublicUser } from '@bdph/types';
+import type { Locale, PublicUser, Role } from '@bdph/types';
 import { User, UserDocument } from './schemas/user.schema';
 
 interface CreateLocalInput {
@@ -35,6 +35,16 @@ export class UsersService {
 
   findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
+  }
+
+  async addRole(userId: string, role: Role): Promise<UserDocument> {
+    const updated = await this.userModel
+      .findByIdAndUpdate(userId, { $addToSet: { roles: role } }, { new: true })
+      .exec();
+    if (!updated) {
+      throw new NotFoundException('User not found');
+    }
+    return updated;
   }
 
   toPublic(user: UserDocument): PublicUser {

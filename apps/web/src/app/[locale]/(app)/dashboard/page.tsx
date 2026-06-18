@@ -31,7 +31,7 @@ export default function DashboardPage() {
   }, [current.status, router])
 
   if (current.status === "authenticated") {
-    return <DashboardShell user={current.user} />
+    return <DashboardShell user={current.user} onUserRefresh={current.reload} />
   }
 
   if (current.status === "error") {
