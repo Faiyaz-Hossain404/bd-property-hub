@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "title": "BD Property Hub — Property for Bangladesh, worldwide",
+    "description": "Buy, rent, and co-own verified property across Bangladesh. Built for expatriates and local buyers, with every deal brokered by our team."
+  },
+  "nav": {
+    "brand": "BD Property Hub",
+    "browse": "Browse",
+    "signIn": "Sign in"
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to manage your listings and saved properties.",
+    "loginCta": "Sign in",
+    "registerTitle": "Create your account",
+    "registerSubtitle": "Buy, rent, or co-own verified property across Bangladesh — from anywhere.",
+    "registerCta": "Create account",
+    "nameLabel": "Full name",
+    "namePlaceholder": "e.g. Karim Rahman",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordHint": "Use at least 8 characters.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "errorNameRequired": "Please enter your name.",
+    "errorEmailInvalid": "Enter a valid email address.",
+    "errorPasswordRequired": "Please enter your password.",
+    "errorPasswordShort": "Password must be at least 8 characters.",
+    "errorInvalidCredentials": "Incorrect email or password.",
+    "errorEmailExists": "An account with this email already exists.",
+    "errorNetwork": "Can't reach the server. Check your connection and try again.",
+    "errorUnexpected": "Something went wrong. Please try again."
+  },
+  "home": {
+    "badge": "Verified listings · Brokered safely",
+    "headline": "Find property in Bangladesh",
+    "headlineAccent": "from anywhere in the world",
+    "subhead": "Land, apartments, and commercial space — every listing verified and every deal brokered by our team, in English and Bangla.",
+    "searchPlaceholder": "Search by area, city, or district",
+    "searchCta": "Search",
+    "statDistrictsLabel": "Districts covered",
+    "statVerifiedLabel": "Documents verified",
+    "statDivisionsLabel": "Divisions served"
+  }
+}
