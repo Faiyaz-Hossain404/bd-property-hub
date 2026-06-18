@@ -1,0 +1,54 @@
+# Local development infrastructure for BD Property Hub.
+# MongoDB runs as a single-node replica set so multi-document transactions
+# (billing ledger, co-ownership finalize) work locally exactly as they do on
+# Atlas. The `mongo-init` one-shot initiates the replica set on first boot.
+services:
+  mongo:
+    image: mongo:7
+    container_name: bdph-mongo
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongo-init:
+    image: mongo:7
+    container_name: bdph-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: 'no'
+    # Idempotent: initiate the replica set only if it is not already configured.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        mongosh --host mongo:27017 --quiet --eval '
+          try { rs.status().ok }
+          catch (e) {
+            rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "localhost:27017" }] });
+          }'
+
+  redis:
+    image: redis:7-alpine
+    container_name: bdph-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: ['redis-server', '--appendonly', 'yes']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo-data:
+  redis-data:
