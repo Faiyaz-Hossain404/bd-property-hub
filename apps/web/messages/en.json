@@ -109,6 +109,32 @@
         "rejected": "Rejected",
         "archived": "Archived"
       }
+    },
+    "moderation": {
+      "sectionTitle": "Moderation",
+      "queueTitle": "Listings waiting for review",
+      "queueDescription": "Approve or reject listings submitted by sellers.",
+      "loading": "Loading the queue…",
+      "loadError": "Couldn't load the queue.",
+      "empty": "Nothing waiting for review right now.",
+      "reasonPlaceholder": "Reason for rejection",
+      "reasonRequired": "Please enter a reason to reject.",
+      "approveCta": "Approve",
+      "approveError": "Couldn't approve the listing. Please try again.",
+      "rejectCta": "Reject",
+      "rejectError": "Couldn't reject the listing. Please try again.",
+      "assetTypes": {
+        "apartment": "Apartment",
+        "land": "Land",
+        "building": "Building",
+        "warehouse": "Warehouse",
+        "factory": "Factory"
+      },
+      "transactionTypes": {
+        "sale": "Sale",
+        "rent": "Rent",
+        "shared_ownership": "Shared ownership"
+      }
     }
   },
   "home": {

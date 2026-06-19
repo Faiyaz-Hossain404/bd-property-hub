@@ -17,6 +17,9 @@ import { DotPattern } from "@/components/ui/dot-pattern"
 import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { LogoutButton } from "@/components/dashboard/logout-button"
 import { ListingsSection } from "@/components/dashboard/listings-section"
+import { ModerationSection } from "@/components/dashboard/moderation-section"
+
+const MODERATOR_ROLES = ["admin", "super_admin"] as const
 
 type Props = { user: PublicUser; onUserRefresh: () => void }
 
@@ -39,6 +42,9 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
   const t = useTranslations("dashboard")
   const format = useFormatter()
   const memberSince = format.dateTime(new Date(user.createdAt), { dateStyle: "medium" })
+  const isModerator = user.roles.some((role) =>
+    MODERATOR_ROLES.includes(role as (typeof MODERATOR_ROLES)[number]),
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +108,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           </Card>
 
           <ListingsSection user={user} onUserRefresh={onUserRefresh} />
+          {isModerator ? <ModerationSection /> : null}
         </div>
       </main>
     </div>
