@@ -83,6 +83,12 @@ export const createListingInputSchema = z.object({
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
+// Boundary input for PATCH /listings/:id — partial update, owner-only, only
+// while the listing is in a status the owner is still allowed to edit (draft
+// or rejected; see ListingsService.update).
+export const updateListingInputSchema = createListingInputSchema.partial();
+export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
+
 // Boundary input for POST /admin/moderation/:caseId/reject.
 export const rejectListingInputSchema = z.object({
   reason: z.string().min(1).max(1000),

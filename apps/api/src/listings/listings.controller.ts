@@ -1,10 +1,12 @@
-import { Body, Controller, ForbiddenException, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import {
   createListingInputSchema,
+  updateListingInputSchema,
   type CreateListingInput,
   type PublicListing,
   type PublicListingStatusHistoryEntry,
   type PublicUser,
+  type UpdateListingInput,
 } from '@bdph/types';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -36,6 +38,18 @@ export class ListingsController {
   async findOwn(@CurrentUser() user: PublicUser): Promise<PublicListing[]> {
     const listings = await this.listings.findOwnByOwner(user.id);
     return listings.map((listing) => this.listings.toPublic(listing));
+  }
+
+  @Patch('listings/:id')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('seller', 'admin', 'super_admin')
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateListingInputSchema)) body: UpdateListingInput,
+    @CurrentUser() user: PublicUser,
+  ): Promise<PublicListing> {
+    const listing = await this.listings.update(user.id, id, body);
+    return this.listings.toPublic(listing);
   }
 
   @Post('listings/:id/submit')
