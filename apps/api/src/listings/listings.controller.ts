@@ -60,6 +60,20 @@ export class ListingsController {
     return this.listings.toPublic(listing);
   }
 
+  // Owner self-service only — not '@Roles(..., admin, super_admin)' like the
+  // sibling routes above. withdraw() always checks ownership against the
+  // caller's own id, so staff would just get a 403 here, not a real grant.
+  // A staff-initiated takedown of someone else's listing is a separate,
+  // not-yet-designed capability (would need its own audit/role checks) —
+  // do not "fix" the 403 by swapping in a non-ownership-checked lookup.
+  @Post('listings/:id/withdraw')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('seller')
+  async withdraw(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
+    const listing = await this.listings.withdraw(user.id, id);
+    return this.listings.toPublic(listing);
+  }
+
   @Get('listings/:id/status-history')
   @UseGuards(SessionAuthGuard)
   async statusHistory(
