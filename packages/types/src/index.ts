@@ -95,6 +95,24 @@ export const rejectListingInputSchema = z.object({
 });
 export type RejectListingInput = z.infer<typeof rejectListingInputSchema>;
 
+// Query params for GET /listings (public catalog browse, API_DESIGN.md §5).
+// Only cursor pagination for now; DISC-3 filter facets and DISC-2 sort options
+// (featured/price/newest) are a later increment. `limit` is coerced from the
+// query string and hard-capped (DISC-7). `cursor` is an opaque token minted by
+// the server — clients pass back `page.nextCursor` verbatim.
+export const PUBLIC_LISTING_PAGE_SIZE = 20;
+export const PUBLIC_LISTING_MAX_PAGE_SIZE = 50;
+export const publicListingQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(PUBLIC_LISTING_MAX_PAGE_SIZE)
+    .default(PUBLIC_LISTING_PAGE_SIZE),
+  cursor: z.string().min(1).optional(),
+});
+export type PublicListingQuery = z.infer<typeof publicListingQuerySchema>;
+
 // Client-safe projection of a listing.
 export interface PublicListing {
   id: string;

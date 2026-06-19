@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Listing, ListingSchema } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistorySchema } from './schemas/listing-status-history.schema';
+import { CatalogController } from './catalog.controller';
 import { ListingsController } from './listings.controller';
 import { ModerationController } from './moderation.controller';
 import { ListingsService } from './listings.service';
@@ -16,7 +17,7 @@ import { ListingsService } from './listings.service';
       { name: ListingStatusHistory.name, schema: ListingStatusHistorySchema },
     ]),
   ],
-  controllers: [ListingsController, ModerationController],
+  controllers: [CatalogController, ListingsController, ModerationController],
   providers: [ListingsService, RolesGuard],
 })
 export class ListingsModule {}
