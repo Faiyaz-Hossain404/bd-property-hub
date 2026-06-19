@@ -73,16 +73,20 @@ function ModerationRow({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function handleApprove() {
+  function runAction(action: () => Promise<unknown>, fallbackMessage: string) {
     setError(null)
     startTransition(async () => {
       try {
-        await approveListing(listing.id)
+        await action()
         onResolved(listing.id)
-      } catch (approveError) {
-        setError(approveError instanceof ApiError ? approveError.message : t("approveError"))
+      } catch (caughtError) {
+        setError(caughtError instanceof ApiError ? caughtError.message : fallbackMessage)
       }
     })
+  }
+
+  function handleApprove() {
+    runAction(() => approveListing(listing.id), t("approveError"))
   }
 
   function handleReject() {
@@ -91,15 +95,7 @@ function ModerationRow({
       setError(t("reasonRequired"))
       return
     }
-    setError(null)
-    startTransition(async () => {
-      try {
-        await rejectListing(listing.id, { reason: trimmed })
-        onResolved(listing.id)
-      } catch (rejectError) {
-        setError(rejectError instanceof ApiError ? rejectError.message : t("rejectError"))
-      }
-    })
+    runAction(() => rejectListing(listing.id, { reason: trimmed }), t("rejectError"))
   }
 
   return (
