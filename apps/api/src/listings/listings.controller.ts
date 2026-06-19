@@ -1,11 +1,19 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { createListingInputSchema, type CreateListingInput, type PublicListing, type PublicUser } from '@bdph/types';
+import { Body, Controller, ForbiddenException, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  createListingInputSchema,
+  type CreateListingInput,
+  type PublicListing,
+  type PublicListingStatusHistoryEntry,
+  type PublicUser,
+} from '@bdph/types';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ListingsService } from './listings.service';
+
+const STAFF_ROLES = ['admin', 'super_admin'];
 
 @Controller()
 export class ListingsController {
@@ -28,5 +36,27 @@ export class ListingsController {
   async findOwn(@CurrentUser() user: PublicUser): Promise<PublicListing[]> {
     const listings = await this.listings.findOwnByOwner(user.id);
     return listings.map((listing) => this.listings.toPublic(listing));
+  }
+
+  @Post('listings/:id/submit')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('seller', 'admin', 'super_admin')
+  async submit(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
+    const listing = await this.listings.submitForReview(user.id, id);
+    return this.listings.toPublic(listing);
+  }
+
+  @Get('listings/:id/status-history')
+  @UseGuards(SessionAuthGuard)
+  async statusHistory(
+    @Param('id') id: string,
+    @CurrentUser() user: PublicUser,
+  ): Promise<PublicListingStatusHistoryEntry[]> {
+    const listing = await this.listings.findById(id);
+    const isStaff = user.roles.some((role) => STAFF_ROLES.includes(role));
+    if (!isStaff && listing.ownerId.toString() !== user.id) {
+      throw new ForbiddenException('You do not own this listing');
+    }
+    return this.listings.findStatusHistory(id);
   }
 }

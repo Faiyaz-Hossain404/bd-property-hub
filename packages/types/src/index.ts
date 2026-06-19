@@ -83,6 +83,12 @@ export const createListingInputSchema = z.object({
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
+// Boundary input for POST /admin/moderation/:caseId/reject.
+export const rejectListingInputSchema = z.object({
+  reason: z.string().min(1).max(1000),
+});
+export type RejectListingInput = z.infer<typeof rejectListingInputSchema>;
+
 // Client-safe projection of a listing.
 export interface PublicListing {
   id: string;
@@ -101,6 +107,17 @@ export interface PublicListing {
   pricing: ListingPricing;
   createdAt: string;
   updatedAt: string;
+}
+
+// Append-only transition record returned by GET /listings/:id/status-history.
+export interface PublicListingStatusHistoryEntry {
+  id: string;
+  listingId: string;
+  fromStatus: ListingPublicationStatus;
+  toStatus: ListingPublicationStatus;
+  actorId: string;
+  reason: string | null;
+  createdAt: string;
 }
 
 // --- API envelopes (API_DESIGN.md) ------------------------------------------

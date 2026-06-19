@@ -3,12 +3,20 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Listing, ListingSchema } from './schemas/listing.schema';
+import { ListingStatusHistory, ListingStatusHistorySchema } from './schemas/listing-status-history.schema';
 import { ListingsController } from './listings.controller';
+import { ModerationController } from './moderation.controller';
 import { ListingsService } from './listings.service';
 
 @Module({
-  imports: [AuthModule, MongooseModule.forFeature([{ name: Listing.name, schema: ListingSchema }])],
-  controllers: [ListingsController],
+  imports: [
+    AuthModule,
+    MongooseModule.forFeature([
+      { name: Listing.name, schema: ListingSchema },
+      { name: ListingStatusHistory.name, schema: ListingStatusHistorySchema },
+    ]),
+  ],
+  controllers: [ListingsController, ModerationController],
   providers: [ListingsService, RolesGuard],
 })
 export class ListingsModule {}

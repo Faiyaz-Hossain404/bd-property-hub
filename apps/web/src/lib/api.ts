@@ -107,3 +107,7 @@ export function createListingDraft(input: CreateListingInput): Promise<PublicLis
 export function getMyListings(): Promise<PublicListing[]> {
   return getJson<PublicListing[]>('/me/listings');
 }
+
+export function submitListingForReview(id: string): Promise<PublicListing> {
+  return postJson<PublicListing>(`/listings/${id}/submit`, {});
+}
