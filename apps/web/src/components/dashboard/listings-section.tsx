@@ -13,7 +13,7 @@ import {
   type PublicUser,
   type TransactionType,
 } from "@bdph/types"
-import { ApiError, becomeSeller, createListingDraft, getMyListings } from "@/lib/api"
+import { ApiError, becomeSeller, createListingDraft, getMyListings, submitListingForReview } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
+const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
 
 type SectionT = ReturnType<typeof useTranslations>
 
@@ -213,20 +214,74 @@ function DraftWorkspace({ t }: { t: SectionT }) {
             <p className="py-4 text-sm text-muted-foreground">{t("empty")}</p>
           ) : null}
           {listings?.map((listing) => (
-            <div key={listing.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-              <div>
-                <p className="font-medium text-foreground">{listing.titleEn}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t(`assetTypes.${listing.assetType}`)} · {t(`transactionTypes.${listing.transactionType}`)}
-                </p>
-              </div>
-              <Badge variant={statusVariant(listing.publicationStatus)}>
-                {t(`publicationStatuses.${listing.publicationStatus}`)}
-              </Badge>
-            </div>
+            <ListingRow
+              key={listing.id}
+              listing={listing}
+              onSubmitted={(updated) =>
+                setListings((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? null)
+              }
+              t={t}
+            />
           ))}
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function ListingRow({
+  listing,
+  onSubmitted,
+  t,
+}: {
+  listing: PublicListing
+  onSubmitted: (updated: PublicListing) => void
+  t: SectionT
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const canSubmit = SUBMITTABLE_STATUSES.includes(
+    listing.publicationStatus as (typeof SUBMITTABLE_STATUSES)[number],
+  )
+
+  function handleSubmit() {
+    setError(null)
+    startTransition(async () => {
+      try {
+        const updated = await submitListingForReview(listing.id)
+        onSubmitted(updated)
+      } catch (submitError) {
+        setError(submitError instanceof ApiError ? submitError.message : t("submitError"))
+      }
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-2 py-3 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-medium text-foreground">{listing.titleEn}</p>
+          <p className="text-xs text-muted-foreground">
+            {t(`assetTypes.${listing.assetType}`)} · {t(`transactionTypes.${listing.transactionType}`)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={statusVariant(listing.publicationStatus)}>
+            {t(`publicationStatuses.${listing.publicationStatus}`)}
+          </Badge>
+          {canSubmit ? (
+            <Button type="button" size="sm" variant="outline" onClick={handleSubmit} disabled={isPending}>
+              {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              {isPending ? t("submitting") : t("submitCta")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {error ? (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   )
 }
