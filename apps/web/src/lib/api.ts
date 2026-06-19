@@ -1,4 +1,11 @@
-import type { CreateListingInput, LoginInput, PublicListing, PublicUser, RegisterInput } from '@bdph/types';
+import type {
+  CreateListingInput,
+  LoginInput,
+  PublicListing,
+  PublicUser,
+  RegisterInput,
+  RejectListingInput,
+} from '@bdph/types';
 
 // The API serves /api/v1/* with credentialed CORS (apps/api/src/main.ts). The
 // default matches the workspace .env.example so dev works without extra wiring.
@@ -110,4 +117,16 @@ export function getMyListings(): Promise<PublicListing[]> {
 
 export function submitListingForReview(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/submit`, {});
+}
+
+export function getModerationQueue(): Promise<PublicListing[]> {
+  return getJson<PublicListing[]>('/admin/moderation/queue');
+}
+
+export function approveListing(caseId: string): Promise<PublicListing> {
+  return postJson<PublicListing>(`/admin/moderation/${caseId}/approve`, {});
+}
+
+export function rejectListing(caseId: string, input: RejectListingInput): Promise<PublicListing> {
+  return postJson<PublicListing>(`/admin/moderation/${caseId}/reject`, input);
 }
