@@ -6,6 +6,7 @@ import type {
   ListingPublicationStatus,
   PublicListing,
   PublicListingStatusHistoryEntry,
+  UpdateListingInput,
 } from '@bdph/types';
 import { Listing, ListingDocument } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
@@ -57,6 +58,52 @@ export class ListingsService {
       .sort({ createdAt: 1 })
       .exec();
     return entries.map((entry) => this.statusHistoryToPublic(entry));
+  }
+
+  // Seller editing their own draft/rejected listing's content (fields filled
+  // in after createDraft, or corrections after a MOD-1 rejection) before
+  // (re)submitting. Not allowed once pending_review/approved/archived — the
+  // owner must wait for a decision (or use the resubmit loop) first.
+  // `attributes`/`pricing` are merged field-by-field: an omitted sub-field
+  // keeps its prior value, and `attributes: {}`/`pricing: {}` is a no-op —
+  // there is no "clear this field" sentinel yet.
+  async update(ownerId: string, listingId: string, input: UpdateListingInput): Promise<ListingDocument> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
+      throw new ConflictException(`Cannot edit a listing in status "${listing.publicationStatus}"`);
+    }
+
+    if (input.titleEn !== undefined) listing.titleEn = input.titleEn;
+    if (input.titleBn !== undefined) listing.titleBn = input.titleBn;
+    if (input.descriptionEn !== undefined) listing.descriptionEn = input.descriptionEn;
+    if (input.descriptionBn !== undefined) listing.descriptionBn = input.descriptionBn;
+    if (input.assetType !== undefined) listing.assetType = input.assetType;
+    if (input.transactionType !== undefined) {
+      listing.transactionType = input.transactionType;
+      listing.isGroupPurchase = input.transactionType === 'shared_ownership';
+    }
+
+    const attrs = input.attributes;
+    if (attrs !== undefined) {
+      if (attrs.facing !== undefined) listing.attributes.facing = attrs.facing;
+      if (attrs.roadSizeFt !== undefined) listing.attributes.roadSizeFt = attrs.roadSizeFt;
+      if (attrs.rooms !== undefined) listing.attributes.rooms = attrs.rooms;
+      if (attrs.baranda !== undefined) listing.attributes.baranda = attrs.baranda;
+      if (attrs.washrooms !== undefined) listing.attributes.washrooms = attrs.washrooms;
+      if (attrs.areaSqft !== undefined) listing.attributes.areaSqft = attrs.areaSqft;
+      if (attrs.landSizeValue !== undefined) listing.attributes.landSizeValue = attrs.landSizeValue;
+      if (attrs.landSizeUnit !== undefined) listing.attributes.landSizeUnit = attrs.landSizeUnit;
+    }
+
+    const pricing = input.pricing;
+    if (pricing !== undefined) {
+      if (pricing.amountBdt !== undefined) listing.pricing.amountBdt = pricing.amountBdt;
+      if (pricing.priceType !== undefined) listing.pricing.priceType = pricing.priceType;
+      if (pricing.rentPeriod !== undefined) listing.pricing.rentPeriod = pricing.rentPeriod;
+    }
+
+    await listing.save();
+    return listing;
   }
 
   // Seller submitting their own draft/rejected listing for moderation (FR-S8).
