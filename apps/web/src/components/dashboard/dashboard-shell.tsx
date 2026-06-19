@@ -16,8 +16,9 @@ import { Badge } from "@/components/ui/badge"
 import { DotPattern } from "@/components/ui/dot-pattern"
 import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { LogoutButton } from "@/components/dashboard/logout-button"
+import { ListingsSection } from "@/components/dashboard/listings-section"
 
-type Props = { user: PublicUser }
+type Props = { user: PublicUser; onUserRefresh: () => void }
 
 function statusVariant(status: UserStatus): "default" | "outline" | "destructive" {
   if (status === "active") return "default"
@@ -34,7 +35,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-export function DashboardShell({ user }: Props) {
+export function DashboardShell({ user, onUserRefresh }: Props) {
   const t = useTranslations("dashboard")
   const format = useFormatter()
   const memberSince = format.dateTime(new Date(user.createdAt), { dateStyle: "medium" })
@@ -99,6 +100,8 @@ export function DashboardShell({ user }: Props) {
               </Row>
             </CardContent>
           </Card>
+
+          <ListingsSection user={user} onUserRefresh={onUserRefresh} />
         </div>
       </main>
     </div>

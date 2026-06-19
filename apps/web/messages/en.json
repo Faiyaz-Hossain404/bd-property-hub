@@ -66,6 +66,46 @@
       "suspended": "Suspended",
       "pending_verification": "Pending verification",
       "deleted": "Deleted"
+    },
+    "listings": {
+      "sectionTitle": "Your listings",
+      "becomeSellerTitle": "Start selling on BD Property Hub",
+      "becomeSellerBody": "Switch on seller access to create and manage property listings.",
+      "becomeSellerCta": "Become a seller",
+      "becomingSeller": "Setting up seller access…",
+      "becomeSellerError": "Couldn't enable seller access. Please try again.",
+      "createTitle": "Create a draft",
+      "createDescription": "Start with the basics — you can add photos, pricing, and details before submitting for review.",
+      "titleLabel": "Title",
+      "titlePlaceholder": "e.g. 3-bed apartment in Gulshan",
+      "titleRequired": "Please enter a title.",
+      "assetTypeLabel": "Property type",
+      "transactionTypeLabel": "Listing type",
+      "createCta": "Create draft",
+      "creating": "Creating…",
+      "createError": "Couldn't create the draft. Please try again.",
+      "loading": "Loading your listings…",
+      "loadError": "Couldn't load your listings.",
+      "empty": "No listings yet. Create your first draft above.",
+      "assetTypes": {
+        "apartment": "Apartment",
+        "land": "Land",
+        "building": "Building",
+        "warehouse": "Warehouse",
+        "factory": "Factory"
+      },
+      "transactionTypes": {
+        "sale": "Sale",
+        "rent": "Rent",
+        "shared_ownership": "Shared ownership"
+      },
+      "publicationStatuses": {
+        "draft": "Draft",
+        "pending_review": "Pending review",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "archived": "Archived"
+      }
     }
   },
   "home": {

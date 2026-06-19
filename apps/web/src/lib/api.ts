@@ -1,4 +1,4 @@
-import type { LoginInput, PublicUser, RegisterInput } from '@bdph/types';
+import type { CreateListingInput, LoginInput, PublicListing, PublicUser, RegisterInput } from '@bdph/types';
 
 // The API serves /api/v1/* with credentialed CORS (apps/api/src/main.ts). The
 // default matches the workspace .env.example so dev works without extra wiring.
@@ -94,4 +94,16 @@ export async function logoutUser(): Promise<void> {
   } catch {
     throw new ApiError('Network request failed', 0);
   }
+}
+
+export function becomeSeller(): Promise<PublicUser> {
+  return postJson<PublicUser>('/me/become-seller', {});
+}
+
+export function createListingDraft(input: CreateListingInput): Promise<PublicListing> {
+  return postJson<PublicListing>('/listings', input);
+}
+
+export function getMyListings(): Promise<PublicListing[]> {
+  return getJson<PublicListing[]>('/me/listings');
 }
