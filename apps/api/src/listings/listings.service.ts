@@ -1,6 +1,12 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, Types } from 'mongoose';
+import { Connection, FilterQuery, Model, Types } from 'mongoose';
 import type {
   CreateListingInput,
   ListingPublicationStatus,
@@ -58,6 +64,57 @@ export class ListingsService {
       .sort({ createdAt: 1 })
       .exec();
     return entries.map((entry) => this.statusHistoryToPublic(entry));
+  }
+
+  // Public catalog browse (LIFE-1): only `approved` listings whose availability
+  // is `available` or `pending` are discoverable; `sold`/`rented` drop out of
+  // the feed (but stay reachable by direct link — see findPublicListing).
+  // Cursor pagination over (createdAt desc, _id desc); we over-fetch one row to
+  // know whether a next page exists. Filters/sort (DISC-2/DISC-3) come later.
+  async findPublicPage(
+    limit: number,
+    cursor: string | null,
+  ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
+    const filter: FilterQuery<ListingDocument> = {
+      publicationStatus: 'approved',
+      availabilityStatus: { $in: ['available', 'pending'] },
+    };
+    if (cursor) {
+      const { createdAt, id } = this.decodeCursor(cursor);
+      // Keyset: rows strictly "after" the cursor in (createdAt desc, _id desc).
+      filter.$or = [{ createdAt: { $lt: createdAt } }, { createdAt, _id: { $lt: id } }];
+    }
+
+    const docs = await this.listingModel
+      .find(filter)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1)
+      .exec();
+
+    const hasMore = docs.length > limit;
+    const items = hasMore ? docs.slice(0, limit) : docs;
+    // When hasMore is true `items` is non-empty (limit >= 1), so `last` is
+    // always defined; the guard also satisfies noUncheckedIndexedAccess
+    // without resorting to a non-null assertion.
+    const last = items[items.length - 1];
+    const nextCursor = hasMore && last ? this.encodeCursor(last) : null;
+    return { items, nextCursor };
+  }
+
+  // Public listing detail. Only `approved` listings are publicly viewable (any
+  // availability — an approved-then-sold listing stays reachable by permalink).
+  // draft/pending_review/rejected/archived all return an indistinguishable 404
+  // so non-public listings can't be probed/enumerated. A malformed id is 404,
+  // not a 500, since this is an unauthenticated, internet-facing route.
+  async findPublicListing(listingId: string): Promise<ListingDocument> {
+    if (!Types.ObjectId.isValid(listingId)) {
+      throw new NotFoundException('Listing not found');
+    }
+    const listing = await this.listingModel
+      .findOne({ _id: listingId, publicationStatus: 'approved' })
+      .exec();
+    if (!listing) throw new NotFoundException('Listing not found');
+    return listing;
   }
 
   // Seller editing their own draft/rejected listing's content (fields filled
@@ -194,6 +251,33 @@ export class ListingsService {
       throw new ForbiddenException('You do not own this listing');
     }
     return listing;
+  }
+
+  // Opaque keyset cursor = base64url({ c: createdAt ISO, i: _id }). Opaque so
+  // clients treat it as a token, not an offset they can hand-craft to deep-page.
+  private encodeCursor(listing: ListingDocument): string {
+    const createdAt = (listing.get('createdAt') as Date).toISOString();
+    const json = JSON.stringify({ c: createdAt, i: listing._id.toString() });
+    return Buffer.from(json, 'utf8').toString('base64url');
+  }
+
+  private decodeCursor(cursor: string): { createdAt: Date; id: Types.ObjectId } {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    } catch {
+      throw new BadRequestException('Invalid cursor');
+    }
+    const record = parsed as { c?: unknown; i?: unknown };
+    const createdAt = typeof record.c === 'string' ? new Date(record.c) : new Date(NaN);
+    if (
+      Number.isNaN(createdAt.getTime()) ||
+      typeof record.i !== 'string' ||
+      !Types.ObjectId.isValid(record.i)
+    ) {
+      throw new BadRequestException('Invalid cursor');
+    }
+    return { createdAt, id: new Types.ObjectId(record.i) };
   }
 
   // Updates `listings.publicationStatus` and appends a `listingStatusHistory`

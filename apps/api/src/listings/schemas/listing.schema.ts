@@ -110,3 +110,7 @@ export class Listing {
 }
 
 export const ListingSchema = SchemaFactory.createForClass(Listing);
+
+// Backs the public catalog query (CatalogController): filter on publication +
+// availability, sorted newest-first with `_id` as the cursor tiebreaker.
+ListingSchema.index({ publicationStatus: 1, availabilityStatus: 1, createdAt: -1, _id: -1 });
