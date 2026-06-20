@@ -144,6 +144,41 @@ export interface PublicListingStatusHistoryEntry {
   createdAt: string;
 }
 
+// --- Geography (DATABASE_DESIGN.md §4, FR-G2 / MAP-5) ------------------------
+// Canonical Bangladesh administrative hierarchy, seeded as small reference
+// collections: division → district (Zilla) → city/upazila → area/thana. This
+// slice ships the top two levels; the `district` (Zilla) is the viewer's
+// *required* selector (MAP-5). `code` is a stable kebab slug used as the natural
+// key for idempotent seeding and as a cache-friendly handle. Names are bilingual
+// (EN + BN), rendered per the viewer's locale (MAP-6).
+export interface GeoDivision {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameBn: string;
+}
+
+export interface GeoDistrict {
+  id: string;
+  code: string;
+  divisionId: string;
+  divisionCode: string;
+  nameEn: string;
+  nameBn: string;
+}
+
+// Query for GET /geo/districts — optional `division_id` narrows to one division
+// (the cascading division → Zilla picker); omitted returns all districts.
+// snake_case matches the documented geo query params (API_DESIGN.md §5); the
+// value is constrained to a 24-char hex id so it is safe to pass to a Mongo query.
+export const geoDistrictsQuerySchema = z.object({
+  division_id: z
+    .string()
+    .regex(/^[a-f0-9]{24}$/i, 'division_id must be a 24-character hex id')
+    .optional(),
+});
+export type GeoDistrictsQuery = z.infer<typeof geoDistrictsQuerySchema>;
+
 // --- API envelopes (API_DESIGN.md) ------------------------------------------
 export interface ApiData<T> {
   data: T;

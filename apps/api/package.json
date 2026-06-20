@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "seed:geo": "ts-node src/geo/geo.seed.ts"
   },
   "dependencies": {
     "@bdph/types": "workspace:*",
