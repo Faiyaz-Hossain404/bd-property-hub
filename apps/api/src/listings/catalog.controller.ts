@@ -27,7 +27,11 @@ export class CatalogController {
   async browse(
     @Query(new ZodValidationPipe(publicListingQuerySchema)) query: PublicListingQuery,
   ): Promise<ApiPage<PublicListing>> {
-    const { items, nextCursor } = await this.listings.findPublicPage(query.limit, query.cursor ?? null);
+    const { items, nextCursor } = await this.listings.findPublicPage(
+      query.limit,
+      query.cursor ?? null,
+      query.district_id ?? null,
+    );
     return {
       data: items.map((listing) => this.listings.toPublic(listing)),
       page: { nextCursor, limit: query.limit },

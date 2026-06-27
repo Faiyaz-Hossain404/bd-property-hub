@@ -77,15 +77,22 @@ export class ListingsService {
   // is `available` or `pending` are discoverable; `sold`/`rented` drop out of
   // the feed (but stay reachable by direct link — see findPublicListing).
   // Cursor pagination over (createdAt desc, _id desc); we over-fetch one row to
-  // know whether a next page exists. Filters/sort (DISC-2/DISC-3) come later.
+  // know whether a next page exists. An optional district filter (DISC-3) narrows
+  // to one Zilla; more facets and DISC-2 sort options come later.
   async findPublicPage(
     limit: number,
     cursor: string | null,
+    districtId: string | null,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
     const filter: FilterQuery<ListingDocument> = {
       publicationStatus: 'approved',
       availabilityStatus: { $in: ['available', 'pending'] },
     };
+    // district_id is Zod-validated to 24-hex at the boundary, so casting is safe;
+    // the equality narrows the keyset query to a single Zilla (DISC-3).
+    if (districtId) {
+      filter['location.districtId'] = new Types.ObjectId(districtId);
+    }
     if (cursor) {
       const { createdAt, id } = this.decodeCursor(cursor);
       // Keyset: rows strictly "after" the cursor in (createdAt desc, _id desc).
