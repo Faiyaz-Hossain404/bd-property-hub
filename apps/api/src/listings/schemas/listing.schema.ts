@@ -154,3 +154,14 @@ export const ListingSchema = SchemaFactory.createForClass(Listing);
 // Backs the public catalog query (CatalogController): filter on publication +
 // availability, sorted newest-first with `_id` as the cursor tiebreaker.
 ListingSchema.index({ publicationStatus: 1, availabilityStatus: 1, createdAt: -1, _id: -1 });
+
+// Backs district-faceted browse (DISC-3): the same equality + sort as above with
+// the district slotted before the sort keys, so a single index covers both the
+// filter and the ordering for a one-Zilla query.
+ListingSchema.index({
+  publicationStatus: 1,
+  availabilityStatus: 1,
+  'location.districtId': 1,
+  createdAt: -1,
+  _id: -1,
+});
