@@ -11,11 +11,13 @@ import type {
   CreateListingInput,
   ListingPublicationStatus,
   PublicListing,
+  PublicListingLocation,
   PublicListingStatusHistoryEntry,
   UpdateListingInput,
 } from '@bdph/types';
-import { Listing, ListingDocument } from './schemas/listing.schema';
+import { Listing, ListingDocument, ListingLocation } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
+import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
 
 const RESUBMITTABLE_STATUSES: ListingPublicationStatus[] = ['draft', 'rejected'];
 
@@ -26,9 +28,13 @@ export class ListingsService {
     @InjectModel(ListingStatusHistory.name)
     private readonly statusHistoryModel: Model<ListingStatusHistoryDocument>,
     @InjectConnection() private readonly connection: Connection,
+    private readonly geo: GeoService,
   ) {}
 
-  createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
+  async createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
+    const location = input.location
+      ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location.districtId))
+      : null;
     return this.listingModel.create({
       ownerId: new Types.ObjectId(ownerId),
       titleEn: input.titleEn,
@@ -40,6 +46,7 @@ export class ListingsService {
       isGroupPurchase: input.transactionType === 'shared_ownership',
       attributes: input.attributes ?? {},
       pricing: input.pricing ?? {},
+      location,
     });
   }
 
@@ -159,6 +166,14 @@ export class ListingsService {
       if (pricing.rentPeriod !== undefined) listing.pricing.rentPeriod = pricing.rentPeriod;
     }
 
+    // Location is a single selector, so it is replaced wholesale (not merged
+    // field-by-field like attributes/pricing) when the seller sends a new one.
+    if (input.location !== undefined) {
+      listing.location = this.toLocationSubdoc(
+        await this.geo.resolveListingLocation(input.location.districtId),
+      );
+    }
+
     await listing.save();
     return listing;
   }
@@ -234,8 +249,37 @@ export class ListingsService {
         priceType: listing.pricing.priceType ?? undefined,
         rentPeriod: listing.pricing.rentPeriod ?? undefined,
       },
+      location: listing.location ? this.locationToPublic(listing.location) : null,
       createdAt: (createdAt ?? new Date()).toISOString(),
       updatedAt: (updatedAt ?? new Date()).toISOString(),
+    };
+  }
+
+  // Maps a resolved snapshot (string ids) into the stored subdoc shape (ObjectId
+  // ids). Shared by createDraft and update so location persists identically.
+  private toLocationSubdoc(snapshot: ListingLocationSnapshot): ListingLocation {
+    return {
+      divisionId: new Types.ObjectId(snapshot.divisionId),
+      divisionCode: snapshot.divisionCode,
+      divisionNameEn: snapshot.divisionNameEn,
+      divisionNameBn: snapshot.divisionNameBn,
+      districtId: new Types.ObjectId(snapshot.districtId),
+      districtCode: snapshot.districtCode,
+      districtNameEn: snapshot.districtNameEn,
+      districtNameBn: snapshot.districtNameBn,
+    };
+  }
+
+  private locationToPublic(location: ListingLocation): PublicListingLocation {
+    return {
+      divisionId: location.divisionId.toString(),
+      divisionCode: location.divisionCode,
+      divisionNameEn: location.divisionNameEn,
+      divisionNameBn: location.divisionNameBn,
+      districtId: location.districtId.toString(),
+      districtCode: location.districtCode,
+      districtNameEn: location.districtNameEn,
+      districtNameBn: location.districtNameBn,
     };
   }
 
