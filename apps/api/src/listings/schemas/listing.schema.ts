@@ -64,9 +64,46 @@ export class ListingPricing {
 }
 export const ListingPricingSchema = SchemaFactory.createForClass(ListingPricing);
 
+// Denormalized area-level location snapshot (DATABASE_DESIGN.md §4-§5, MAP-5).
+// Copied from the geo taxonomy at write time so catalog reads can render and
+// group by division/district without populating the reference collections; if a
+// place is ever renamed, a backfill refreshes these snapshots. This holds only
+// the administrative area — exact coordinates (exactPoint), the public fuzzed
+// displayPoint (MAP-2), and address_line are separate, later fields.
+@Schema({ _id: false })
+export class ListingLocation {
+  // Refs back to the geo collections. No standalone index here yet: the catalog
+  // filter that will need it (DISC-3) should add one compound index spanning
+  // publication/availability/location so it actually covers that query.
+  @Prop({ type: Types.ObjectId, ref: 'Division', required: true })
+  divisionId!: Types.ObjectId;
+
+  @Prop({ required: true })
+  divisionCode!: string;
+
+  @Prop({ required: true })
+  divisionNameEn!: string;
+
+  @Prop({ required: true })
+  divisionNameBn!: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'District', required: true })
+  districtId!: Types.ObjectId;
+
+  @Prop({ required: true })
+  districtCode!: string;
+
+  @Prop({ required: true })
+  districtNameEn!: string;
+
+  @Prop({ required: true })
+  districtNameBn!: string;
+}
+export const ListingLocationSchema = SchemaFactory.createForClass(ListingLocation);
+
 // The seller-facing draft slice of the listings aggregate (DATABASE_DESIGN.md
-// §5). Geo, media, and installment terms are populated by later endpoints and
-// are intentionally not modeled here yet.
+// §5). Area-level location is modeled below; media and installment terms are
+// populated by later endpoints and are intentionally not modeled here yet.
 @Schema({ collection: 'listings', timestamps: true })
 export class Listing {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
@@ -107,6 +144,9 @@ export class Listing {
 
   @Prop({ type: ListingPricingSchema, default: () => ({}) })
   pricing!: ListingPricing;
+
+  @Prop({ type: ListingLocationSchema, default: null })
+  location!: ListingLocation | null;
 }
 
 export const ListingSchema = SchemaFactory.createForClass(Listing);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import type { GeoDistrict, GeoDivision } from '@bdph/types';
@@ -10,6 +10,20 @@ import { DISTRICT_SEED } from './data/districts';
 export interface GeoSeedResult {
   divisions: number;
   districts: number;
+}
+
+// Storage-ready denormalized location snapshot for a listing (MAP-5). String ids
+// keep the geo layer DTO-oriented; ListingsService converts them to ObjectIds
+// when it persists the subdoc.
+export interface ListingLocationSnapshot {
+  divisionId: string;
+  divisionCode: string;
+  divisionNameEn: string;
+  divisionNameBn: string;
+  districtId: string;
+  districtCode: string;
+  districtNameEn: string;
+  districtNameBn: string;
 }
 
 @Injectable()
@@ -32,6 +46,37 @@ export class GeoService {
     const filter = divisionId ? { divisionId: new Types.ObjectId(divisionId) } : {};
     const districts = await this.districtModel.find(filter).sort({ nameEn: 1 }).exec();
     return districts.map((district) => this.districtToPublic(district));
+  }
+
+  // Resolve a seller-chosen district (Zilla) into a denormalized location
+  // snapshot for a listing (MAP-5). District is the required selector; its parent
+  // division is looked up and denormalized so callers never pass — or mismatch —
+  // a division. A districtId that doesn't exist is a bad request (the client sent
+  // an invalid reference in a create/update body), not a 500.
+  async resolveListingLocation(districtId: string): Promise<ListingLocationSnapshot> {
+    if (!Types.ObjectId.isValid(districtId)) {
+      throw new BadRequestException('Unknown district');
+    }
+    const district = await this.districtModel.findById(districtId).exec();
+    if (!district) {
+      throw new BadRequestException('Unknown district');
+    }
+    const division = await this.divisionModel.findById(district.divisionId).exec();
+    if (!division) {
+      // A seeded district always has a parent; reaching here means the geo
+      // collections are inconsistent (re-run `seed:geo`).
+      throw new BadRequestException('District has no parent division');
+    }
+    return {
+      divisionId: division._id.toString(),
+      divisionCode: division.code,
+      divisionNameEn: division.nameEn,
+      divisionNameBn: division.nameBn,
+      districtId: district._id.toString(),
+      districtCode: district.code,
+      districtNameEn: district.nameEn,
+      districtNameBn: district.nameBn,
+    };
   }
 
   // Idempotent seed (DATABASE_DESIGN.md §4 / MAP-5). Upserts divisions first,

@@ -49,7 +49,7 @@ export const FACINGS = ['north', 'south', 'east', 'west'] as const;
 export type Facing = (typeof FACINGS)[number];
 
 // Filterable attributes. All optional at draft time — a seller fills these in
-// before submitting for review; geo/media/installmentTerms come later.
+// before submitting for review; media/installmentTerms come later.
 export const listingAttributesSchema = z.object({
   facing: z.enum(FACINGS).optional(),
   roadSizeFt: z.number().nonnegative().optional(),
@@ -69,6 +69,18 @@ export const listingPricingSchema = z.object({
 });
 export type ListingPricing = z.infer<typeof listingPricingSchema>;
 
+// Location selector for a listing (MAP-5). The seller picks a district (Zilla);
+// the API resolves and denormalizes its parent division + bilingual names from
+// the geo taxonomy, so the catalog can display and (later) facet on location
+// without a join. District is the *required* selector and division is derived
+// from it — the division is never sent separately, which removes any chance of a
+// division/district mismatch. City/upazila/area and a precise map pin (MAP-1)
+// are finer-grained, later increments.
+export const listingLocationInputSchema = z.object({
+  districtId: z.string().regex(/^[a-f0-9]{24}$/i, 'districtId must be a 24-character hex id'),
+});
+export type ListingLocationInput = z.infer<typeof listingLocationInputSchema>;
+
 // Boundary input for POST /listings (create draft) — only what a seller must
 // supply to start; the rest is filled in via PATCH before submit.
 export const createListingInputSchema = z.object({
@@ -80,6 +92,7 @@ export const createListingInputSchema = z.object({
   transactionType: z.enum(TRANSACTION_TYPES),
   attributes: listingAttributesSchema.optional(),
   pricing: listingPricingSchema.optional(),
+  location: listingLocationInputSchema.optional(),
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
@@ -113,6 +126,22 @@ export const publicListingQuerySchema = z.object({
 });
 export type PublicListingQuery = z.infer<typeof publicListingQuerySchema>;
 
+// Area-level location on a listing's public projection (A5/MAP-2). Division +
+// district only — administrative areas that are safe to expose anonymously.
+// Exact coordinates and address_line are NEVER part of this projection; precise
+// location is shared manually via chat once a deal progresses. `null` until the
+// seller chooses a location (it is optional at draft time).
+export interface PublicListingLocation {
+  divisionId: string;
+  divisionCode: string;
+  divisionNameEn: string;
+  divisionNameBn: string;
+  districtId: string;
+  districtCode: string;
+  districtNameEn: string;
+  districtNameBn: string;
+}
+
 // Client-safe projection of a listing.
 export interface PublicListing {
   id: string;
@@ -129,6 +158,7 @@ export interface PublicListing {
   availabilityStatus: ListingAvailabilityStatus;
   attributes: ListingAttributes;
   pricing: ListingPricing;
+  location: PublicListingLocation | null;
   createdAt: string;
   updatedAt: string;
 }
