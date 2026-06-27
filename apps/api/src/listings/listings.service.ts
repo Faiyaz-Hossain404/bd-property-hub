@@ -12,12 +12,15 @@ import type {
   ListingPublicationStatus,
   PublicListing,
   PublicListingLocation,
+  PublicListingMedia,
   PublicListingStatusHistoryEntry,
   UpdateListingInput,
+  VideoLinkProvider,
 } from '@bdph/types';
-import { Listing, ListingDocument, ListingLocation } from './schemas/listing.schema';
+import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
+import { normalizeVideoLink } from './video-link';
 
 const RESUBMITTABLE_STATUSES: ListingPublicationStatus[] = ['draft', 'rejected'];
 
@@ -35,6 +38,7 @@ export class ListingsService {
     const location = input.location
       ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location.districtId))
       : null;
+    const media = this.videoLinksToMedia(input.videoLinks ?? [], 0);
     return this.listingModel.create({
       ownerId: new Types.ObjectId(ownerId),
       titleEn: input.titleEn,
@@ -47,6 +51,7 @@ export class ListingsService {
       attributes: input.attributes ?? {},
       pricing: input.pricing ?? {},
       location,
+      media,
     });
   }
 
@@ -181,6 +186,17 @@ export class ListingsService {
       );
     }
 
+    // Video links are sent as the complete set the seller wants, so they replace
+    // the listing's existing links wholesale — while preserving any non-link media
+    // (uploaded photos/video, a later increment). Each link is re-validated.
+    // The link count is capped by the schema (MAX_LISTING_VIDEO_LINKS) and
+    // `preserved` is empty until uploads exist; when the upload pipeline lands, add
+    // a cap on the *merged* media length here so photos + links stay bounded.
+    if (input.videoLinks !== undefined) {
+      const preserved = listing.media.filter((item) => item.kind !== 'video_link');
+      listing.media = [...preserved, ...this.videoLinksToMedia(input.videoLinks, preserved.length)];
+    }
+
     await listing.save();
     return listing;
   }
@@ -257,6 +273,7 @@ export class ListingsService {
         rentPeriod: listing.pricing.rentPeriod ?? undefined,
       },
       location: listing.location ? this.locationToPublic(listing.location) : null,
+      media: this.mediaToPublic(listing.media),
       createdAt: (createdAt ?? new Date()).toISOString(),
       updatedAt: (updatedAt ?? new Date()).toISOString(),
     };
@@ -288,6 +305,57 @@ export class ListingsService {
       districtNameEn: location.districtNameEn,
       districtNameBn: location.districtNameBn,
     };
+  }
+
+  // Turns the seller's raw video links into `video_link` media subdocs, validating
+  // each through normalizeVideoLink (https + host allowlist, see video-link.ts). An
+  // invalid link fails the whole call with a 400 that names which one, rather than
+  // silently dropping it. Links are `ready` immediately (no processing pipeline).
+  private videoLinksToMedia(rawLinks: string[], startPosition: number): ListingMedia[] {
+    return rawLinks.map((raw, index) => {
+      const normalized = normalizeVideoLink(raw);
+      if (!normalized) {
+        throw new BadRequestException(
+          `Video link #${index + 1} must be a valid YouTube or Vimeo URL (https only)`,
+        );
+      }
+      return {
+        kind: 'video_link',
+        status: 'ready',
+        storageKey: null,
+        externalUrl: normalized.url,
+        provider: normalized.provider,
+        position: startPosition + index,
+        width: null,
+        height: null,
+        durationSec: null,
+      };
+    });
+  }
+
+  // Public projection of the media array: only `ready` items, ordered by position.
+  // For a video_link `url` is the external link; uploaded media (later) will fill
+  // url/posterUrl with CDN URLs. Storage keys and any sensitive-document data never
+  // appear here (A5). The `_id` cast is safe — Mongoose adds an `_id` to every
+  // embedded array subdocument.
+  private mediaToPublic(media: ListingMedia[]): PublicListingMedia[] {
+    return [...media]
+      .filter((item) => item.status === 'ready')
+      .sort((a, b) => a.position - b.position)
+      .map((item) => {
+        const stored = item as ListingMedia & { _id: Types.ObjectId };
+        return {
+          id: stored._id.toString(),
+          kind: item.kind,
+          url: item.externalUrl,
+          posterUrl: null,
+          provider: (item.provider as VideoLinkProvider | null) ?? null,
+          position: item.position,
+          width: item.width,
+          height: item.height,
+          durationSec: item.durationSec,
+        };
+      });
   }
 
   private async findOrThrow(listingId: string): Promise<ListingDocument> {

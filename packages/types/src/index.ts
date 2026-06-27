@@ -69,6 +69,74 @@ export const listingPricingSchema = z.object({
 });
 export type ListingPricing = z.infer<typeof listingPricingSchema>;
 
+// --- Listing media (DATABASE_DESIGN.md §5 `media[]`) --------------------------
+// A listing carries a bounded, embedded media array. Uploaded photos/video flow
+// through object storage and an async processing pipeline
+// (FILE_STORAGE_ARCHITECTURE.md) — a later increment, once a bucket is
+// provisioned. External `video_link`s need no storage, so they are the one kind
+// that works end to end today and is wired here.
+export const LISTING_MEDIA_KINDS = ['photo', 'video', 'video_link', 'floorplan'] as const;
+export type ListingMediaKind = (typeof LISTING_MEDIA_KINDS)[number];
+
+// Lifecycle: uploaded media is `pending` until the worker finishes processing; an
+// external link is `ready` at once. Only `ready` media is ever shown publicly.
+export const LISTING_MEDIA_STATUSES = ['pending', 'ready'] as const;
+export type ListingMediaStatus = (typeof LISTING_MEDIA_STATUSES)[number];
+
+// Hosts we accept external video tour links from, mapped to their provider. Kept
+// to well-known players so a stored link can be embedded safely (no arbitrary
+// third-party origins). Shared data so the API validator and the web app agree on
+// exactly one allowlist.
+export const VIDEO_LINK_PROVIDERS = ['youtube', 'vimeo'] as const;
+export type VideoLinkProvider = (typeof VIDEO_LINK_PROVIDERS)[number];
+
+export const VIDEO_LINK_HOSTS: Record<string, VideoLinkProvider> = {
+  'youtube.com': 'youtube',
+  'www.youtube.com': 'youtube',
+  'm.youtube.com': 'youtube',
+  'youtu.be': 'youtube',
+  'vimeo.com': 'vimeo',
+  'www.vimeo.com': 'vimeo',
+  'player.vimeo.com': 'vimeo',
+};
+
+// Per-listing caps. The uploaded photo/video caps (≤20 photos, ≤1 video — decided
+// MEDIA-1/3) land with the upload pipeline; today we only bound how many external
+// links a seller may attach, and how long a single link may be.
+export const MAX_LISTING_VIDEO_LINKS = 5;
+export const MAX_VIDEO_LINK_LENGTH = 2048;
+
+// Result of validating a seller-supplied link. The robust URL parsing lives in
+// the API (apps/api/.../video-link.ts) where the WHATWG `URL` global is available;
+// this type is the shared contract for what a normalized link looks like.
+export interface NormalizedVideoLink {
+  url: string;
+  provider: VideoLinkProvider;
+}
+
+// Client-safe projection of one media item. Only `ready` media is ever included.
+// For a `video_link`, `url` is the validated external link and `provider` names the
+// host; uploaded photo/video (later) will fill `url`/`posterUrl` with CDN URLs and
+// the dimension fields. Never carries storage keys or any sensitive-document data
+// (A5) — those stay server-side / staff-only.
+//
+// Frontend contract: for a video_link, `url` is the seller's *watch-page* link, not
+// an embed URL — build the iframe src from `provider` + the extracted video id
+// (e.g. youtube-nocookie.com/embed/…, player.vimeo.com/video/…). Never drop `url`
+// straight into an iframe/anchor without re-checking it is https. `provider` is an
+// enum value, safe to switch on (never render it as raw HTML).
+export interface PublicListingMedia {
+  id: string;
+  kind: ListingMediaKind;
+  url: string | null;
+  posterUrl: string | null;
+  provider: VideoLinkProvider | null;
+  position: number;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+}
+
 // Location selector for a listing (MAP-5). The seller picks a district (Zilla);
 // the API resolves and denormalizes its parent division + bilingual names from
 // the geo taxonomy, so the catalog can display and (later) facet on location
@@ -93,6 +161,13 @@ export const createListingInputSchema = z.object({
   attributes: listingAttributesSchema.optional(),
   pricing: listingPricingSchema.optional(),
   location: listingLocationInputSchema.optional(),
+  // External video tour links (YouTube/Vimeo). This checks shape + count only;
+  // each URL is validated and canonicalized server-side (normalizeVideoLink),
+  // which is also where an unknown host / non-https link is rejected.
+  videoLinks: z
+    .array(z.string().min(1).max(MAX_VIDEO_LINK_LENGTH))
+    .max(MAX_LISTING_VIDEO_LINKS)
+    .optional(),
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
@@ -166,6 +241,7 @@ export interface PublicListing {
   attributes: ListingAttributes;
   pricing: ListingPricing;
   location: PublicListingLocation | null;
+  media: PublicListingMedia[];
   createdAt: string;
   updatedAt: string;
 }
