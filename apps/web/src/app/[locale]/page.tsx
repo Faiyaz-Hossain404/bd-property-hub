@@ -36,6 +36,9 @@ export default async function HomePage({ params }: PageParams) {
         </span>
         <nav className="flex items-center gap-2 text-sm font-medium">
           <Button asChild variant="ghost" size="sm">
+            <Link href="/catalog">{nav('browse')}</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
             <Link href="/" locale={otherLocale}>
               {otherLabel}
             </Link>
@@ -79,8 +82,8 @@ export default async function HomePage({ params }: PageParams) {
                   aria-label={t('searchPlaceholder')}
                   className="h-12 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
                 />
-                <Button size="lg" className="h-12 shrink-0 px-8">
-                  {t('searchCta')}
+                <Button asChild size="lg" className="h-12 shrink-0 px-8">
+                  <Link href="/catalog">{t('searchCta')}</Link>
                 </Button>
               </Card>
             </div>
