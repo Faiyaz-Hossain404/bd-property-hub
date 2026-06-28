@@ -1,5 +1,7 @@
 import type {
+  CommitListingMediaInput,
   CreateListingInput,
+  ListingMediaUploadTicket,
   LoginInput,
   PublicListing,
   PublicUser,
@@ -109,6 +111,20 @@ export function becomeSeller(): Promise<PublicUser> {
 
 export function createListingDraft(input: CreateListingInput): Promise<PublicListing> {
   return postJson<PublicListing>('/listings', input);
+}
+
+// Two-phase photo upload (FILE_STORAGE_ARCHITECTURE.md). First mint a Cloudinary
+// signature, then (after the browser uploads the file straight to Cloudinary)
+// commit the returned asset so the server verifies and records it.
+export function getListingUploadTicket(id: string): Promise<ListingMediaUploadTicket> {
+  return postJson<ListingMediaUploadTicket>(`/listings/${id}/media/presign`, {});
+}
+
+export function commitListingMedia(
+  id: string,
+  input: CommitListingMediaInput,
+): Promise<PublicListing> {
+  return postJson<PublicListing>(`/listings/${id}/media/commit`, input);
 }
 
 export function getMyListings(): Promise<PublicListing[]> {

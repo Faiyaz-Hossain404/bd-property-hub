@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ListingPhotos } from "./listing-photos"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
 const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
@@ -217,7 +218,7 @@ function DraftWorkspace({ t }: { t: SectionT }) {
             <ListingRow
               key={listing.id}
               listing={listing}
-              onSubmitted={(updated) =>
+              onUpdated={(updated) =>
                 setListings((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? null)
               }
               t={t}
@@ -231,11 +232,11 @@ function DraftWorkspace({ t }: { t: SectionT }) {
 
 function ListingRow({
   listing,
-  onSubmitted,
+  onUpdated,
   t,
 }: {
   listing: PublicListing
-  onSubmitted: (updated: PublicListing) => void
+  onUpdated: (updated: PublicListing) => void
   t: SectionT
 }) {
   const [error, setError] = useState<string | null>(null)
@@ -249,7 +250,7 @@ function ListingRow({
     startTransition(async () => {
       try {
         const updated = await submitListingForReview(listing.id)
-        onSubmitted(updated)
+        onUpdated(updated)
       } catch (submitError) {
         setError(submitError instanceof ApiError ? submitError.message : t("submitError"))
       }
@@ -282,6 +283,7 @@ function ListingRow({
           {error}
         </p>
       ) : null}
+      <ListingPhotos listing={listing} onUpdated={onUpdated} />
     </div>
   )
 }

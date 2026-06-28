@@ -108,6 +108,16 @@
         "approved": "অনুমোদিত",
         "rejected": "প্রত্যাখ্যাত",
         "archived": "আর্কাইভ"
+      },
+      "photos": {
+        "title": "ছবি",
+        "count": "{max}টির মধ্যে {count}টি",
+        "empty": "এখনো কোনো ছবি নেই।",
+        "addCta": "ছবি যোগ করুন",
+        "uploading": "আপলোড হচ্ছে…",
+        "tooLarge": "প্রতিটি ছবি ১০ এমবি বা তার কম হতে হবে।",
+        "wrongType": "JPG, PNG, WebP বা HEIC ছবি নির্বাচন করুন।",
+        "uploadError": "ছবি আপলোড করা যায়নি। আবার চেষ্টা করুন।"
       }
     },
     "moderation": {
