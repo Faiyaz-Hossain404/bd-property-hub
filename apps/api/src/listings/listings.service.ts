@@ -210,10 +210,10 @@ export class ListingsService {
 
   // Seller submitting their own draft/rejected listing for moderation (FR-S8).
   // A submission must be complete enough to be worth a moderator's time and to
-  // render meaningfully in the public catalog once approved — currently an
-  // area-level location and a price (see listingCompletenessGaps). This is the
-  // authoritative gate; the dashboard also disables Submit proactively, but the
-  // check here still holds if that UI is bypassed.
+  // render meaningfully in the public catalog once approved — currently just an
+  // area-level location (price is optional; see listingCompletenessGaps). This is
+  // the authoritative gate; the dashboard also disables Submit proactively, but
+  // the check here still holds if that UI is bypassed.
   async submitForReview(ownerId: string, listingId: string): Promise<ListingDocument> {
     const listing = await this.findOwnedOrThrow(ownerId, listingId);
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {

@@ -179,22 +179,19 @@ export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
 // single source of truth so the authoritative API gate
 // (ListingsService.submitForReview) and the web dashboard's proactive
 // Submit-button gating/hint can never drift apart.
-export const LISTING_REQUIREMENTS = ['location', 'price'] as const;
+//
+// Price is intentionally NOT required: a listing with no price simply renders as
+// "Price on request" in the catalog (see priceLabel), so a seller can submit and
+// negotiate the figure later. Only an area-level location is mandatory — without
+// it the listing can't appear in the district filter. Further requirements
+// (legal documents, asset size) will be added here the same way once they exist.
+export const LISTING_REQUIREMENTS = ['location'] as const;
 export type ListingRequirement = (typeof LISTING_REQUIREMENTS)[number];
 
 // Structural shape satisfied by both the public projection (PublicListing) and
 // the Mongoose document, so neither side has to map before checking.
 export interface ListingCompletenessInput {
   location: unknown;
-  pricing: { amountBdt?: number | null; priceType?: PriceType | null } | null | undefined;
-}
-
-// A price counts as set when it is explicitly "on request" (no figure needed) or
-// a positive amount is given. A zero/negative amount is treated as unset.
-function hasUsablePrice(pricing: ListingCompletenessInput['pricing']): boolean {
-  if (!pricing) return false;
-  if (pricing.priceType === 'on_request') return true;
-  return typeof pricing.amountBdt === 'number' && pricing.amountBdt > 0;
 }
 
 // Returns the requirements a listing still fails, in display order. An empty
@@ -202,7 +199,6 @@ function hasUsablePrice(pricing: ListingCompletenessInput['pricing']): boolean {
 export function listingCompletenessGaps(listing: ListingCompletenessInput): ListingRequirement[] {
   const gaps: ListingRequirement[] = [];
   if (listing.location == null) gaps.push('location');
-  if (!hasUsablePrice(listing.pricing)) gaps.push('price');
   return gaps;
 }
 
