@@ -90,6 +90,30 @@
       "loading": "Loading your listings…",
       "loadError": "Couldn't load your listings.",
       "empty": "No listings yet. Create your first draft above.",
+      "editTitle": "Location & price",
+      "divisionLabel": "Division",
+      "divisionPlaceholder": "Select a division",
+      "districtLabel": "District",
+      "districtPlaceholder": "Select a district",
+      "priceLabel": "Price (BDT)",
+      "pricePlaceholder": "e.g. 8500000",
+      "priceTypeLabel": "Price type",
+      "rentPeriodLabel": "Rent period",
+      "priceInvalid": "Enter the price as a whole number, with no commas.",
+      "geoLoadError": "Couldn't load locations. Please try again.",
+      "saveCta": "Save details",
+      "saving": "Saving…",
+      "saveError": "Couldn't save the details. Please try again.",
+      "saved": "Saved.",
+      "priceTypes": {
+        "fixed": "Fixed",
+        "negotiable": "Negotiable",
+        "on_request": "On request"
+      },
+      "rentPeriods": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
       "assetTypes": {
         "apartment": "Apartment",
         "land": "Land",

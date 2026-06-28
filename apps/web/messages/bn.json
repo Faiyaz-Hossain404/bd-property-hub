@@ -90,6 +90,30 @@
       "loading": "আপনার তালিকা লোড হচ্ছে…",
       "loadError": "আপনার তালিকা লোড করা যায়নি।",
       "empty": "এখনো কোনো তালিকা নেই। উপরে আপনার প্রথম ড্রাফট তৈরি করুন।",
+      "editTitle": "অবস্থান ও দাম",
+      "divisionLabel": "বিভাগ",
+      "divisionPlaceholder": "একটি বিভাগ নির্বাচন করুন",
+      "districtLabel": "জেলা",
+      "districtPlaceholder": "একটি জেলা নির্বাচন করুন",
+      "priceLabel": "দাম (টাকা)",
+      "pricePlaceholder": "যেমন: ৮৫০০০০০",
+      "priceTypeLabel": "দামের ধরন",
+      "rentPeriodLabel": "ভাড়ার মেয়াদ",
+      "priceInvalid": "দাম পূর্ণ সংখ্যায় লিখুন, কমা ছাড়া।",
+      "geoLoadError": "অবস্থান লোড করা যায়নি। আবার চেষ্টা করুন।",
+      "saveCta": "বিবরণ সংরক্ষণ করুন",
+      "saving": "সংরক্ষণ হচ্ছে…",
+      "saveError": "বিবরণ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।",
+      "saved": "সংরক্ষিত হয়েছে।",
+      "priceTypes": {
+        "fixed": "নির্ধারিত",
+        "negotiable": "আলোচনা সাপেক্ষ",
+        "on_request": "জানতে যোগাযোগ"
+      },
+      "rentPeriods": {
+        "monthly": "মাসিক",
+        "yearly": "বার্ষিক"
+      },
       "assetTypes": {
         "apartment": "ফ্ল্যাট",
         "land": "জমি",

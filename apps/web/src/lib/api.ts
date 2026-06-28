@@ -2,12 +2,15 @@ import type {
   ApiPage,
   CommitListingMediaInput,
   CreateListingInput,
+  GeoDistrict,
+  GeoDivision,
   ListingMediaUploadTicket,
   LoginInput,
   PublicListing,
   PublicUser,
   RegisterInput,
   RejectListingInput,
+  UpdateListingInput,
 } from '@bdph/types';
 
 // The API serves /api/v1/* with credentialed CORS (apps/api/src/main.ts). The
@@ -35,11 +38,11 @@ function messageFromBody(body: unknown, fallback: string): string {
   return fallback;
 }
 
-async function postJson<T>(path: string, payload: unknown): Promise<T> {
+async function writeJson<T>(method: 'POST' | 'PATCH', path: string, payload: unknown): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       // Send and store the httpOnly session cookie issued by the API.
@@ -57,6 +60,14 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
 
   // Success payloads are wrapped in the `{ data }` envelope (API_DESIGN.md).
   return (body as { data: T }).data;
+}
+
+function postJson<T>(path: string, payload: unknown): Promise<T> {
+  return writeJson<T>('POST', path, payload);
+}
+
+function patchJson<T>(path: string, payload: unknown): Promise<T> {
+  return writeJson<T>('PATCH', path, payload);
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -170,8 +181,25 @@ export function getPublicListing(id: string): Promise<PublicListing> {
   return getJson<PublicListing>(`/listings/${id}`);
 }
 
+// Owner-only partial update (PATCH /listings/:id) — used to fill in location and
+// pricing on a draft before submitting. Only editable statuses are accepted
+// server-side; the API returns the refreshed public projection.
+export function updateListing(id: string, input: UpdateListingInput): Promise<PublicListing> {
+  return patchJson<PublicListing>(`/listings/${id}`, input);
+}
+
 export function submitListingForReview(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/submit`, {});
+}
+
+// Public geography selectors (long-cached) backing the division → district picker.
+export function getDivisions(): Promise<GeoDivision[]> {
+  return getJson<GeoDivision[]>('/geo/divisions');
+}
+
+export function getDistricts(divisionId?: string): Promise<GeoDistrict[]> {
+  const query = divisionId ? `?division_id=${divisionId}` : '';
+  return getJson<GeoDistrict[]>(`/geo/districts${query}`);
 }
 
 export function getModerationQueue(): Promise<PublicListing[]> {

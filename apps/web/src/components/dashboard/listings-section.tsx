@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useTransition, type FormEvent } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { LoaderCircle } from "lucide-react"
 
 import {
@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListingPhotos } from "./listing-photos"
+import { ListingEditor } from "./listing-editor"
+import { locationLabel, priceLabel } from "@/lib/listing-display"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
 const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
@@ -283,7 +285,28 @@ function ListingRow({
           {error}
         </p>
       ) : null}
+      {canSubmit ? (
+        <ListingEditor listing={listing} onUpdated={onUpdated} t={t} />
+      ) : (
+        <ListingSummary listing={listing} />
+      )}
       <ListingPhotos listing={listing} onUpdated={onUpdated} />
     </div>
+  )
+}
+
+// Read-only location + price line for listings that are no longer editable
+// (pending review / approved / archived). Reuses the catalog display helpers so
+// formatting matches the public catalog exactly.
+function ListingSummary({ listing }: { listing: PublicListing }) {
+  const locale = useLocale()
+  const ct = useTranslations("catalog")
+  const place = locationLabel(listing.location, locale)
+  const price = priceLabel(listing.pricing, locale, ct)
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      {place ?? ct("locationUnset")} · {price}
+    </p>
   )
 }
