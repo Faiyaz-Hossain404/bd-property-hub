@@ -147,6 +147,60 @@
       }
     }
   },
+  "catalog": {
+    "title": "সম্পত্তি ব্রাউজ করুন",
+    "subtitle": "বাংলাদেশজুড়ে যাচাইকৃত তালিকা, প্রতিটি লেনদেন আমাদের টিম পরিচালনা করে।",
+    "loading": "সম্পত্তি লোড হচ্ছে…",
+    "loadError": "সম্পত্তি লোড করা যায়নি। আবার চেষ্টা করুন।",
+    "retry": "আবার চেষ্টা করুন",
+    "empty": "এখনো কোনো সম্পত্তি তালিকাভুক্ত নেই। শীঘ্রই আবার দেখুন।",
+    "loadMore": "আরও দেখুন",
+    "loadingMore": "লোড হচ্ছে…",
+    "viewDetails": "বিস্তারিত দেখুন",
+    "backToBrowse": "সব সম্পত্তিতে ফিরুন",
+    "detailLoadError": "এই সম্পত্তি লোড করা যায়নি। আবার চেষ্টা করুন।",
+    "notFound": "এই সম্পত্তি আর উপলব্ধ নেই।",
+    "photoCount": "{count, plural, =0 {কোনো ছবি নেই} =1 {১টি ছবি} other {#টি ছবি}}",
+    "noPhotos": "এখনো কোনো ছবি নেই",
+    "descriptionTitle": "এই সম্পত্তি সম্পর্কে",
+    "detailsTitle": "বিস্তারিত",
+    "locationTitle": "অবস্থান",
+    "locationUnset": "অবস্থান নিশ্চিত করা হবে",
+    "priceOnRequest": "দাম জানতে যোগাযোগ করুন",
+    "priceNegotiable": "আলোচনা সাপেক্ষ",
+    "perMonth": "/মাস",
+    "perYear": "/বছর",
+    "groupPurchase": "যৌথ মালিকানা",
+    "assetTypes": {
+      "apartment": "ফ্ল্যাট",
+      "land": "জমি",
+      "building": "বিল্ডিং",
+      "warehouse": "গুদাম",
+      "factory": "কারখানা"
+    },
+    "transactionTypes": {
+      "sale": "বিক্রয়ের জন্য",
+      "rent": "ভাড়ার জন্য",
+      "shared_ownership": "যৌথ মালিকানা"
+    },
+    "attributes": {
+      "rooms": "{count, plural, =1 {১টি রুম} other {#টি রুম}}",
+      "washrooms": "{count, plural, =1 {১টি বাথরুম} other {#টি বাথরুম}}",
+      "areaSqft": "{value} বর্গফুট",
+      "landSize": "{value} {unit}",
+      "facing": "{facing}মুখী"
+    },
+    "facings": {
+      "north": "উত্তর",
+      "south": "দক্ষিণ",
+      "east": "পূর্ব",
+      "west": "পশ্চিম"
+    },
+    "landUnits": {
+      "katha": "কাঠা",
+      "sqft": "বর্গফুট"
+    }
+  },
   "home": {
     "badge": "যাচাইকৃত তালিকা · নিরাপদ মধ্যস্থতা",
     "headline": "বাংলাদেশে সম্পত্তি খুঁজুন",

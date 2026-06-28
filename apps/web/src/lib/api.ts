@@ -1,4 +1,5 @@
 import type {
+  ApiPage,
   CommitListingMediaInput,
   CreateListingInput,
   ListingMediaUploadTicket,
@@ -78,6 +79,25 @@ async function getJson<T>(path: string): Promise<T> {
   return (body as { data: T }).data;
 }
 
+// Like getJson, but returns the full paginated `{ data, page }` envelope rather
+// than unwrapping `.data` — the caller needs `page.nextCursor` to load more.
+async function getPage<T>(path: string): Promise<ApiPage<T>> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' });
+  } catch {
+    throw new ApiError('Network request failed', 0);
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(messageFromBody(body, 'Request failed'), response.status);
+  }
+
+  return body as ApiPage<T>;
+}
+
 export function registerUser(input: RegisterInput): Promise<PublicUser> {
   return postJson<PublicUser>('/auth/register', input);
 }
@@ -129,6 +149,25 @@ export function commitListingMedia(
 
 export function getMyListings(): Promise<PublicListing[]> {
   return getJson<PublicListing[]>('/me/listings');
+}
+
+// Public catalog browse (API_DESIGN.md §5) — anonymous, cursor-paginated. Pass
+// back `page.nextCursor` verbatim to fetch the next page; `districtId` is the
+// optional Zilla facet (DISC-3).
+export function browseListings(params: {
+  cursor?: string | null;
+  districtId?: string | null;
+}): Promise<ApiPage<PublicListing>> {
+  const search = new URLSearchParams();
+  if (params.cursor) search.set('cursor', params.cursor);
+  if (params.districtId) search.set('district_id', params.districtId);
+  const query = search.toString();
+  return getPage<PublicListing>(`/listings${query ? `?${query}` : ''}`);
+}
+
+// Public listing detail — anonymous, serves only `approved` listings.
+export function getPublicListing(id: string): Promise<PublicListing> {
+  return getJson<PublicListing>(`/listings/${id}`);
 }
 
 export function submitListingForReview(id: string): Promise<PublicListing> {

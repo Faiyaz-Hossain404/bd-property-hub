@@ -147,6 +147,60 @@
       }
     }
   },
+  "catalog": {
+    "title": "Browse properties",
+    "subtitle": "Verified listings across Bangladesh, every deal brokered by our team.",
+    "loading": "Loading properties…",
+    "loadError": "Couldn't load properties. Please try again.",
+    "retry": "Try again",
+    "empty": "No properties are listed yet. Please check back soon.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "viewDetails": "View details",
+    "backToBrowse": "Back to all properties",
+    "detailLoadError": "Couldn't load this property. Please try again.",
+    "notFound": "This property is no longer available.",
+    "photoCount": "{count, plural, =0 {No photos} =1 {1 photo} other {# photos}}",
+    "noPhotos": "No photos yet",
+    "descriptionTitle": "About this property",
+    "detailsTitle": "Details",
+    "locationTitle": "Location",
+    "locationUnset": "Location to be confirmed",
+    "priceOnRequest": "Price on request",
+    "priceNegotiable": "negotiable",
+    "perMonth": "/mo",
+    "perYear": "/yr",
+    "groupPurchase": "Co-ownership",
+    "assetTypes": {
+      "apartment": "Apartment",
+      "land": "Land",
+      "building": "Building",
+      "warehouse": "Warehouse",
+      "factory": "Factory"
+    },
+    "transactionTypes": {
+      "sale": "For sale",
+      "rent": "For rent",
+      "shared_ownership": "Co-ownership"
+    },
+    "attributes": {
+      "rooms": "{count, plural, =1 {1 room} other {# rooms}}",
+      "washrooms": "{count, plural, =1 {1 bath} other {# baths}}",
+      "areaSqft": "{value} sqft",
+      "landSize": "{value} {unit}",
+      "facing": "{facing}-facing"
+    },
+    "facings": {
+      "north": "North",
+      "south": "South",
+      "east": "East",
+      "west": "West"
+    },
+    "landUnits": {
+      "katha": "katha",
+      "sqft": "sqft"
+    }
+  },
   "home": {
     "badge": "Verified listings · Brokered safely",
     "headline": "Find property in Bangladesh",
