@@ -90,8 +90,7 @@
       "submitIncomplete": "এই তালিকা জমা দেওয়ার আগে {missing} যোগ করুন।",
       "requirementSeparator": " ও ",
       "requirements": {
-        "location": "অবস্থান",
-        "price": "দাম"
+        "location": "অবস্থান"
       },
       "loading": "আপনার তালিকা লোড হচ্ছে…",
       "loadError": "আপনার তালিকা লোড করা যায়নি।",

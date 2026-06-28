@@ -90,8 +90,7 @@
       "submitIncomplete": "Add a {missing} before you can submit this listing.",
       "requirementSeparator": " and ",
       "requirements": {
-        "location": "location",
-        "price": "price"
+        "location": "location"
       },
       "loading": "Loading your listings…",
       "loadError": "Couldn't load your listings.",
