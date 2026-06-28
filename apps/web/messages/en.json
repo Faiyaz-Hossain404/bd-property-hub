@@ -108,6 +108,16 @@
         "approved": "Approved",
         "rejected": "Rejected",
         "archived": "Archived"
+      },
+      "photos": {
+        "title": "Photos",
+        "count": "{count} of {max}",
+        "empty": "No photos yet.",
+        "addCta": "Add photo",
+        "uploading": "Uploading…",
+        "tooLarge": "Each image must be 10 MB or smaller.",
+        "wrongType": "Please choose a JPG, PNG, WebP, or HEIC image.",
+        "uploadError": "Couldn't upload the photo. Please try again."
       }
     },
     "moderation": {
