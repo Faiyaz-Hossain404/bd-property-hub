@@ -14,6 +14,9 @@ const envSchema = z
     MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
     MONGODB_DB_NAME: z.string().default('bdph'),
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+    // Optional: listing photo uploads are disabled (routes 503) until this is set.
+    // Form: cloudinary://<api_key>:<api_secret>@<cloud_name>
+    CLOUDINARY_URL: z.string().optional(),
   })
   .passthrough();
 

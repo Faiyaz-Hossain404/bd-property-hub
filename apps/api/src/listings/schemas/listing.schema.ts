@@ -106,35 +106,33 @@ export class ListingLocation {
 export const ListingLocationSchema = SchemaFactory.createForClass(ListingLocation);
 
 // One embedded media item (DATABASE_DESIGN.md §5 `media[]`). Bounded and read with
-// the listing, so it is embedded rather than a separate collection. An uploaded
-// `photo`/`video` carries a `storageKey` (its poster/variants/dimensions filled in
-// by the processing worker — a later increment) and starts `pending`; an external
-// `video_link` carries a validated `externalUrl` + `provider` and is `ready` at
-// once. Each item keeps Mongoose's default `_id` so it can be addressed
-// individually (reorder/delete) by a later endpoint.
+// the listing, so it is embedded rather than a separate collection. The binary
+// lives in Cloudinary; this holds the storage key (`public_id`), a server-built
+// delivery `url`, and the asset metadata captured at commit. Each item keeps
+// Mongoose's default `_id` so it can be addressed individually (reorder/delete) by
+// a later endpoint.
 @Schema()
 export class ListingMedia {
   @Prop({ type: String, enum: LISTING_MEDIA_KINDS, required: true })
   kind!: ListingMediaKind;
 
-  @Prop({ type: String, enum: LISTING_MEDIA_STATUSES, default: 'pending' })
+  @Prop({ type: String, enum: LISTING_MEDIA_STATUSES, default: 'ready' })
   status!: ListingMediaStatus;
 
-  // Object-storage key for uploaded media; null for an external link.
-  @Prop({ type: String, default: null })
-  storageKey!: string | null;
+  // Cloudinary public_id — the storage key the asset is addressed by.
+  @Prop({ required: true })
+  storageKey!: string;
 
-  // Validated external URL for a `video_link`; null for uploaded media.
-  @Prop({ type: String, default: null })
-  externalUrl!: string | null;
+  // Server-built delivery URL (strips EXIF + optimizes); stored so the read path
+  // never depends on Cloudinary config being present.
+  @Prop({ required: true })
+  url!: string;
 
-  // Host provider for an external link (youtube/vimeo); null for uploaded media.
   @Prop({ type: String, default: null })
-  provider!: string | null;
+  format!: string | null;
 
-  // Sort order within the listing's gallery.
-  @Prop({ type: Number, default: 0 })
-  position!: number;
+  @Prop({ type: Number, default: null })
+  bytes!: number | null;
 
   @Prop({ type: Number, default: null })
   width!: number | null;
@@ -142,15 +140,16 @@ export class ListingMedia {
   @Prop({ type: Number, default: null })
   height!: number | null;
 
-  @Prop({ type: Number, default: null })
-  durationSec!: number | null;
+  // Sort order within the listing's gallery.
+  @Prop({ type: Number, default: 0 })
+  position!: number;
 }
 export const ListingMediaSchema = SchemaFactory.createForClass(ListingMedia);
 
 // The seller-facing draft slice of the listings aggregate (DATABASE_DESIGN.md
-// §5). Area-level location and the media array are modeled below; uploaded photo/
-// video bytes live in object storage (only their keys/metadata sit in `media`),
-// and installment terms are populated by later endpoints.
+// §5). Area-level location and the media array are modeled below; the media
+// binaries live in Cloudinary (only keys/metadata sit in `media`). Installment
+// terms are populated by later endpoints.
 @Schema({ collection: 'listings', timestamps: true })
 export class Listing {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })

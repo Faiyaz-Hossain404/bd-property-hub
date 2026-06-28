@@ -70,71 +70,75 @@ export const listingPricingSchema = z.object({
 export type ListingPricing = z.infer<typeof listingPricingSchema>;
 
 // --- Listing media (DATABASE_DESIGN.md §5 `media[]`) --------------------------
-// A listing carries a bounded, embedded media array. Uploaded photos/video flow
-// through object storage and an async processing pipeline
-// (FILE_STORAGE_ARCHITECTURE.md) — a later increment, once a bucket is
-// provisioned. External `video_link`s need no storage, so they are the one kind
-// that works end to end today and is wired here.
-export const LISTING_MEDIA_KINDS = ['photo', 'video', 'video_link', 'floorplan'] as const;
+// A listing carries a bounded, embedded media array. Binaries live in Cloudinary
+// (object storage); the DB holds only the key + metadata. Photos are uploaded
+// directly to Cloudinary from the browser using a short-lived signature the API
+// mints, then committed back here (FILE_STORAGE_ARCHITECTURE.md, two-phase
+// presign -> commit).
+export const LISTING_MEDIA_KINDS = ['photo', 'video', 'floorplan'] as const;
 export type ListingMediaKind = (typeof LISTING_MEDIA_KINDS)[number];
 
-// Lifecycle: uploaded media is `pending` until the worker finishes processing; an
-// external link is `ready` at once. Only `ready` media is ever shown publicly.
+// Uploaded media is `ready` once committed (Cloudinary transforms on delivery, so
+// there is no async processing step today). `pending` is reserved for a future
+// scan/processing pipeline. Only `ready` media is shown publicly.
 export const LISTING_MEDIA_STATUSES = ['pending', 'ready'] as const;
 export type ListingMediaStatus = (typeof LISTING_MEDIA_STATUSES)[number];
 
-// Hosts we accept external video tour links from, mapped to their provider. Kept
-// to well-known players so a stored link can be embedded safely (no arbitrary
-// third-party origins). Shared data so the API validator and the web app agree on
-// exactly one allowlist.
-export const VIDEO_LINK_PROVIDERS = ['youtube', 'vimeo'] as const;
-export type VideoLinkProvider = (typeof VIDEO_LINK_PROVIDERS)[number];
+// Photo limits (MEDIA-1, FILE_STORAGE_ARCHITECTURE.md §4): at most 20 images per
+// listing, each <= 10 MB, in a known web image format. Enforced server-side at
+// commit time against the real uploaded asset's metadata.
+export const MAX_LISTING_PHOTOS = 20;
+export const MAX_LISTING_IMAGE_BYTES = 10 * 1024 * 1024;
+export const LISTING_IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'heic'] as const;
+export type ListingImageFormat = (typeof LISTING_IMAGE_FORMATS)[number];
 
-export const VIDEO_LINK_HOSTS: Record<string, VideoLinkProvider> = {
-  'youtube.com': 'youtube',
-  'www.youtube.com': 'youtube',
-  'm.youtube.com': 'youtube',
-  'youtu.be': 'youtube',
-  'vimeo.com': 'vimeo',
-  'www.vimeo.com': 'vimeo',
-  'player.vimeo.com': 'vimeo',
-};
-
-// Per-listing caps. The uploaded photo/video caps (≤20 photos, ≤1 video — decided
-// MEDIA-1/3) land with the upload pipeline; today we only bound how many external
-// links a seller may attach, and how long a single link may be.
-export const MAX_LISTING_VIDEO_LINKS = 5;
-export const MAX_VIDEO_LINK_LENGTH = 2048;
-
-// Result of validating a seller-supplied link. The robust URL parsing lives in
-// the API (apps/api/.../video-link.ts) where the WHATWG `URL` global is available;
-// this type is the shared contract for what a normalized link looks like.
-export interface NormalizedVideoLink {
-  url: string;
-  provider: VideoLinkProvider;
+// Response of POST /listings/:id/media/presign. The client posts the file plus
+// these fields directly to Cloudinary's upload endpoint
+// (https://api.cloudinary.com/v1_1/<cloudName>/image/upload). The signature is
+// short-lived (bound to `timestamp`) and never exposes the API secret.
+export interface ListingMediaUploadTicket {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
 }
 
+// Boundary input for POST /listings/:id/media/commit — the fields Cloudinary
+// returns to the client after a successful direct upload, echoed back so the
+// server can verify and record them. The server re-verifies `signature` against
+// the API secret, so a forged body is rejected; the client is never trusted to
+// supply the final URL.
+export const commitListingMediaInputSchema = z.object({
+  // Cloudinary public_ids are slash/dot/dash/underscore + alnum. Constraining the
+  // charset (and rejecting "..") keeps a crafted id from slipping past the
+  // server's `listings/<id>/` folder-prefix check or warping the delivery URL.
+  publicId: z
+    .string()
+    .min(1)
+    .max(500)
+    .regex(/^[A-Za-z0-9._\-/]+$/, 'publicId contains invalid characters')
+    .refine((value) => !value.includes('..'), 'publicId must not contain ".."'),
+  version: z.coerce.number().int().positive(),
+  signature: z.string().min(1).max(200),
+  resourceType: z.string().min(1).max(40),
+  format: z.string().min(1).max(20),
+  bytes: z.coerce.number().int().positive(),
+  width: z.coerce.number().int().positive().optional(),
+  height: z.coerce.number().int().positive().optional(),
+});
+export type CommitListingMediaInput = z.infer<typeof commitListingMediaInputSchema>;
+
 // Client-safe projection of one media item. Only `ready` media is ever included.
-// For a `video_link`, `url` is the validated external link and `provider` names the
-// host; uploaded photo/video (later) will fill `url`/`posterUrl` with CDN URLs and
-// the dimension fields. Never carries storage keys or any sensitive-document data
-// (A5) — those stay server-side / staff-only.
-//
-// Frontend contract: for a video_link, `url` is the seller's *watch-page* link, not
-// an embed URL — build the iframe src from `provider` + the extracted video id
-// (e.g. youtube-nocookie.com/embed/…, player.vimeo.com/video/…). Never drop `url`
-// straight into an iframe/anchor without re-checking it is https. `provider` is an
-// enum value, safe to switch on (never render it as raw HTML).
+// `url` is a server-built Cloudinary delivery URL (the seller never supplies it).
+// Never carries storage internals or any sensitive-document data (A5).
 export interface PublicListingMedia {
   id: string;
   kind: ListingMediaKind;
-  url: string | null;
-  posterUrl: string | null;
-  provider: VideoLinkProvider | null;
-  position: number;
+  url: string;
   width: number | null;
   height: number | null;
-  durationSec: number | null;
+  position: number;
 }
 
 // Location selector for a listing (MAP-5). The seller picks a district (Zilla);
@@ -161,13 +165,6 @@ export const createListingInputSchema = z.object({
   attributes: listingAttributesSchema.optional(),
   pricing: listingPricingSchema.optional(),
   location: listingLocationInputSchema.optional(),
-  // External video tour links (YouTube/Vimeo). This checks shape + count only;
-  // each URL is validated and canonicalized server-side (normalizeVideoLink),
-  // which is also where an unknown host / non-https link is rejected.
-  videoLinks: z
-    .array(z.string().min(1).max(MAX_VIDEO_LINK_LENGTH))
-    .max(MAX_LISTING_VIDEO_LINKS)
-    .optional(),
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
