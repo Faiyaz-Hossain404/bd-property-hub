@@ -8,16 +8,21 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, FilterQuery, Model, Types } from 'mongoose';
 import type {
+  CommitListingMediaInput,
   CreateListingInput,
+  ListingMediaUploadTicket,
   ListingPublicationStatus,
   PublicListing,
   PublicListingLocation,
+  PublicListingMedia,
   PublicListingStatusHistoryEntry,
   UpdateListingInput,
 } from '@bdph/types';
-import { Listing, ListingDocument, ListingLocation } from './schemas/listing.schema';
+import { LISTING_IMAGE_FORMATS, MAX_LISTING_IMAGE_BYTES, MAX_LISTING_PHOTOS } from '@bdph/types';
+import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 const RESUBMITTABLE_STATUSES: ListingPublicationStatus[] = ['draft', 'rejected'];
 
@@ -29,6 +34,7 @@ export class ListingsService {
     private readonly statusHistoryModel: Model<ListingStatusHistoryDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly geo: GeoService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   async createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
@@ -257,6 +263,7 @@ export class ListingsService {
         rentPeriod: listing.pricing.rentPeriod ?? undefined,
       },
       location: listing.location ? this.locationToPublic(listing.location) : null,
+      media: this.mediaToPublic(listing.media),
       createdAt: (createdAt ?? new Date()).toISOString(),
       updatedAt: (updatedAt ?? new Date()).toISOString(),
     };
@@ -288,6 +295,120 @@ export class ListingsService {
       districtNameEn: location.districtNameEn,
       districtNameBn: location.districtNameBn,
     };
+  }
+
+  // Mint a Cloudinary upload signature so a seller can upload one photo directly
+  // to storage (FILE_STORAGE_ARCHITECTURE.md presign step). Owner-only, and only
+  // while the listing is still editable. The asset is scoped to this listing's
+  // folder so it cannot later be attached to a different listing.
+  async createUploadSignature(ownerId: string, listingId: string): Promise<ListingMediaUploadTicket> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    this.assertEditable(listing);
+    const folder = `listings/${listing._id.toString()}`;
+    return this.cloudinary.createUploadSignature(folder);
+  }
+
+  // Record a photo the seller uploaded to Cloudinary (FILE_STORAGE commit step).
+  // Security: the server re-verifies Cloudinary's response signature (a forged
+  // body fails), confirms the asset lives in THIS listing's folder (so it cannot
+  // be borrowed from another listing/account), and enforces the image
+  // format/size/count caps against the real asset metadata before recording it.
+  async commitUploadedMedia(
+    ownerId: string,
+    listingId: string,
+    input: CommitListingMediaInput,
+  ): Promise<ListingDocument> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    this.assertEditable(listing);
+
+    const verified = this.cloudinary.verifyUpload({
+      publicId: input.publicId,
+      version: input.version,
+      signature: input.signature,
+      resourceType: input.resourceType,
+      format: input.format,
+      bytes: input.bytes,
+      width: input.width,
+      height: input.height,
+    });
+
+    const folderPrefix = `listings/${listing._id.toString()}/`;
+    if (!verified.publicId.startsWith(folderPrefix)) {
+      throw new BadRequestException('Upload does not belong to this listing');
+    }
+    if (!(LISTING_IMAGE_FORMATS as readonly string[]).includes(verified.format.toLowerCase())) {
+      throw new BadRequestException('Unsupported image format');
+    }
+    if (verified.bytes > MAX_LISTING_IMAGE_BYTES) {
+      throw new BadRequestException('Image exceeds the maximum allowed size');
+    }
+
+    const newMedia: ListingMedia = {
+      kind: 'photo',
+      status: 'ready',
+      storageKey: verified.publicId,
+      url: verified.url,
+      format: verified.format,
+      bytes: verified.bytes,
+      width: verified.width,
+      height: verified.height,
+      position: listing.media.length,
+    };
+    // Atomic write: append only if this exact asset is not already attached
+    // (rejects a replayed commit) AND the photo count is still under the cap.
+    // Doing both in one findOneAndUpdate — rather than read-check-push — closes
+    // the race between concurrent commits on the same listing.
+    const underPhotoCap = {
+      $lt: [
+        {
+          $size: {
+            $filter: {
+              input: { $ifNull: ['$media', []] },
+              cond: { $eq: ['$$this.kind', 'photo'] },
+            },
+          },
+        },
+        MAX_LISTING_PHOTOS,
+      ],
+    };
+    const updated = await this.listingModel.findOneAndUpdate(
+      { _id: listing._id, 'media.storageKey': { $ne: verified.publicId }, $expr: underPhotoCap },
+      { $push: { media: newMedia } },
+      { new: true },
+    );
+    if (!updated) {
+      throw new ConflictException(
+        `This photo is already attached, or the listing already has the maximum ${MAX_LISTING_PHOTOS} photos`,
+      );
+    }
+    return updated;
+  }
+
+  // Public projection of the media array: only `ready` items, ordered by position.
+  // `url` is the server-built delivery URL. Storage internals and any sensitive
+  // document data never appear here (A5). The `_id` cast is safe — Mongoose adds
+  // an `_id` to every embedded array subdocument.
+  private mediaToPublic(media: ListingMedia[]): PublicListingMedia[] {
+    return [...media]
+      .filter((item) => item.status === 'ready')
+      .sort((a, b) => a.position - b.position)
+      .map((item) => {
+        const stored = item as ListingMedia & { _id: Types.ObjectId };
+        return {
+          id: stored._id.toString(),
+          kind: item.kind,
+          url: item.url,
+          width: item.width,
+          height: item.height,
+          position: item.position,
+        };
+      });
+  }
+
+  private assertEditable(listing: ListingDocument): void {
+    if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
+      throw new ConflictException(`Cannot edit a listing in status "${listing.publicationStatus}"`);
+    }
   }
 
   private async findOrThrow(listingId: string): Promise<ListingDocument> {

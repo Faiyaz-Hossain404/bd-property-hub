@@ -69,6 +69,78 @@ export const listingPricingSchema = z.object({
 });
 export type ListingPricing = z.infer<typeof listingPricingSchema>;
 
+// --- Listing media (DATABASE_DESIGN.md §5 `media[]`) --------------------------
+// A listing carries a bounded, embedded media array. Binaries live in Cloudinary
+// (object storage); the DB holds only the key + metadata. Photos are uploaded
+// directly to Cloudinary from the browser using a short-lived signature the API
+// mints, then committed back here (FILE_STORAGE_ARCHITECTURE.md, two-phase
+// presign -> commit).
+export const LISTING_MEDIA_KINDS = ['photo', 'video', 'floorplan'] as const;
+export type ListingMediaKind = (typeof LISTING_MEDIA_KINDS)[number];
+
+// Uploaded media is `ready` once committed (Cloudinary transforms on delivery, so
+// there is no async processing step today). `pending` is reserved for a future
+// scan/processing pipeline. Only `ready` media is shown publicly.
+export const LISTING_MEDIA_STATUSES = ['pending', 'ready'] as const;
+export type ListingMediaStatus = (typeof LISTING_MEDIA_STATUSES)[number];
+
+// Photo limits (MEDIA-1, FILE_STORAGE_ARCHITECTURE.md §4): at most 20 images per
+// listing, each <= 10 MB, in a known web image format. Enforced server-side at
+// commit time against the real uploaded asset's metadata.
+export const MAX_LISTING_PHOTOS = 20;
+export const MAX_LISTING_IMAGE_BYTES = 10 * 1024 * 1024;
+export const LISTING_IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'heic'] as const;
+export type ListingImageFormat = (typeof LISTING_IMAGE_FORMATS)[number];
+
+// Response of POST /listings/:id/media/presign. The client posts the file plus
+// these fields directly to Cloudinary's upload endpoint
+// (https://api.cloudinary.com/v1_1/<cloudName>/image/upload). The signature is
+// short-lived (bound to `timestamp`) and never exposes the API secret.
+export interface ListingMediaUploadTicket {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
+}
+
+// Boundary input for POST /listings/:id/media/commit — the fields Cloudinary
+// returns to the client after a successful direct upload, echoed back so the
+// server can verify and record them. The server re-verifies `signature` against
+// the API secret, so a forged body is rejected; the client is never trusted to
+// supply the final URL.
+export const commitListingMediaInputSchema = z.object({
+  // Cloudinary public_ids are slash/dot/dash/underscore + alnum. Constraining the
+  // charset (and rejecting "..") keeps a crafted id from slipping past the
+  // server's `listings/<id>/` folder-prefix check or warping the delivery URL.
+  publicId: z
+    .string()
+    .min(1)
+    .max(500)
+    .regex(/^[A-Za-z0-9._\-/]+$/, 'publicId contains invalid characters')
+    .refine((value) => !value.includes('..'), 'publicId must not contain ".."'),
+  version: z.coerce.number().int().positive(),
+  signature: z.string().min(1).max(200),
+  resourceType: z.string().min(1).max(40),
+  format: z.string().min(1).max(20),
+  bytes: z.coerce.number().int().positive(),
+  width: z.coerce.number().int().positive().optional(),
+  height: z.coerce.number().int().positive().optional(),
+});
+export type CommitListingMediaInput = z.infer<typeof commitListingMediaInputSchema>;
+
+// Client-safe projection of one media item. Only `ready` media is ever included.
+// `url` is a server-built Cloudinary delivery URL (the seller never supplies it).
+// Never carries storage internals or any sensitive-document data (A5).
+export interface PublicListingMedia {
+  id: string;
+  kind: ListingMediaKind;
+  url: string;
+  width: number | null;
+  height: number | null;
+  position: number;
+}
+
 // Location selector for a listing (MAP-5). The seller picks a district (Zilla);
 // the API resolves and denormalizes its parent division + bilingual names from
 // the geo taxonomy, so the catalog can display and (later) facet on location
@@ -166,6 +238,7 @@ export interface PublicListing {
   attributes: ListingAttributes;
   pricing: ListingPricing;
   location: PublicListingLocation | null;
+  media: PublicListingMedia[];
   createdAt: string;
   updatedAt: string;
 }

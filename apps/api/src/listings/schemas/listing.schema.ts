@@ -5,6 +5,8 @@ import {
   FACINGS,
   LAND_SIZE_UNITS,
   LISTING_AVAILABILITY_STATUSES,
+  LISTING_MEDIA_KINDS,
+  LISTING_MEDIA_STATUSES,
   LISTING_PUBLICATION_STATUSES,
   PRICE_TYPES,
   RENT_PERIODS,
@@ -14,6 +16,8 @@ import {
   type Facing,
   type LandSizeUnit,
   type ListingAvailabilityStatus,
+  type ListingMediaKind,
+  type ListingMediaStatus,
   type ListingPublicationStatus,
   type Locale,
   type PriceType,
@@ -101,9 +105,51 @@ export class ListingLocation {
 }
 export const ListingLocationSchema = SchemaFactory.createForClass(ListingLocation);
 
+// One embedded media item (DATABASE_DESIGN.md §5 `media[]`). Bounded and read with
+// the listing, so it is embedded rather than a separate collection. The binary
+// lives in Cloudinary; this holds the storage key (`public_id`), a server-built
+// delivery `url`, and the asset metadata captured at commit. Each item keeps
+// Mongoose's default `_id` so it can be addressed individually (reorder/delete) by
+// a later endpoint.
+@Schema()
+export class ListingMedia {
+  @Prop({ type: String, enum: LISTING_MEDIA_KINDS, required: true })
+  kind!: ListingMediaKind;
+
+  @Prop({ type: String, enum: LISTING_MEDIA_STATUSES, default: 'ready' })
+  status!: ListingMediaStatus;
+
+  // Cloudinary public_id — the storage key the asset is addressed by.
+  @Prop({ required: true })
+  storageKey!: string;
+
+  // Server-built delivery URL (strips EXIF + optimizes); stored so the read path
+  // never depends on Cloudinary config being present.
+  @Prop({ required: true })
+  url!: string;
+
+  @Prop({ type: String, default: null })
+  format!: string | null;
+
+  @Prop({ type: Number, default: null })
+  bytes!: number | null;
+
+  @Prop({ type: Number, default: null })
+  width!: number | null;
+
+  @Prop({ type: Number, default: null })
+  height!: number | null;
+
+  // Sort order within the listing's gallery.
+  @Prop({ type: Number, default: 0 })
+  position!: number;
+}
+export const ListingMediaSchema = SchemaFactory.createForClass(ListingMedia);
+
 // The seller-facing draft slice of the listings aggregate (DATABASE_DESIGN.md
-// §5). Area-level location is modeled below; media and installment terms are
-// populated by later endpoints and are intentionally not modeled here yet.
+// §5). Area-level location and the media array are modeled below; the media
+// binaries live in Cloudinary (only keys/metadata sit in `media`). Installment
+// terms are populated by later endpoints.
 @Schema({ collection: 'listings', timestamps: true })
 export class Listing {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
@@ -147,6 +193,9 @@ export class Listing {
 
   @Prop({ type: ListingLocationSchema, default: null })
   location!: ListingLocation | null;
+
+  @Prop({ type: [ListingMediaSchema], default: [] })
+  media!: ListingMedia[];
 }
 
 export const ListingSchema = SchemaFactory.createForClass(Listing);
