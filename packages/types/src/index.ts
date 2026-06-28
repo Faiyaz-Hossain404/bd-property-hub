@@ -174,6 +174,42 @@ export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 export const updateListingInputSchema = createListingInputSchema.partial();
 export type UpdateListingInput = z.infer<typeof updateListingInputSchema>;
 
+// --- Listing completeness (FR-S8 submit gate) --------------------------------
+// What a draft must have before a seller may submit it for review. Kept here as a
+// single source of truth so the authoritative API gate
+// (ListingsService.submitForReview) and the web dashboard's proactive
+// Submit-button gating/hint can never drift apart.
+export const LISTING_REQUIREMENTS = ['location', 'price'] as const;
+export type ListingRequirement = (typeof LISTING_REQUIREMENTS)[number];
+
+// Structural shape satisfied by both the public projection (PublicListing) and
+// the Mongoose document, so neither side has to map before checking.
+export interface ListingCompletenessInput {
+  location: unknown;
+  pricing: { amountBdt?: number | null; priceType?: PriceType | null } | null | undefined;
+}
+
+// A price counts as set when it is explicitly "on request" (no figure needed) or
+// a positive amount is given. A zero/negative amount is treated as unset.
+function hasUsablePrice(pricing: ListingCompletenessInput['pricing']): boolean {
+  if (!pricing) return false;
+  if (pricing.priceType === 'on_request') return true;
+  return typeof pricing.amountBdt === 'number' && pricing.amountBdt > 0;
+}
+
+// Returns the requirements a listing still fails, in display order. An empty
+// array means the listing is ready to submit.
+export function listingCompletenessGaps(listing: ListingCompletenessInput): ListingRequirement[] {
+  const gaps: ListingRequirement[] = [];
+  if (listing.location == null) gaps.push('location');
+  if (!hasUsablePrice(listing.pricing)) gaps.push('price');
+  return gaps;
+}
+
+export function isListingComplete(listing: ListingCompletenessInput): boolean {
+  return listingCompletenessGaps(listing).length === 0;
+}
+
 // Boundary input for POST /admin/moderation/:caseId/reject.
 export const rejectListingInputSchema = z.object({
   reason: z.string().min(1).max(1000),

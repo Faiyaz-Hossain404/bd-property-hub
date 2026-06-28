@@ -87,6 +87,12 @@
       "submitCta": "Submit for review",
       "submitting": "Submitting…",
       "submitError": "Couldn't submit the listing. Please try again.",
+      "submitIncomplete": "Add a {missing} before you can submit this listing.",
+      "requirementSeparator": " and ",
+      "requirements": {
+        "location": "location",
+        "price": "price"
+      },
       "loading": "Loading your listings…",
       "loadError": "Couldn't load your listings.",
       "empty": "No listings yet. Create your first draft above.",
