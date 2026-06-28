@@ -7,6 +7,7 @@ import { LoaderCircle } from "lucide-react"
 import {
   ASSET_TYPES,
   TRANSACTION_TYPES,
+  listingCompletenessGaps,
   type AssetType,
   type ListingPublicationStatus,
   type PublicListing,
@@ -246,6 +247,13 @@ function ListingRow({
   const canSubmit = SUBMITTABLE_STATUSES.includes(
     listing.publicationStatus as (typeof SUBMITTABLE_STATUSES)[number],
   )
+  // A submittable draft must also be complete (location + price). We mirror the
+  // server gate here so Submit is disabled with an explanatory hint instead of
+  // letting the click fail — but the API still enforces it (defense in depth).
+  const gaps = canSubmit ? listingCompletenessGaps(listing) : []
+  const missingLabel = gaps
+    .map((requirement) => t(`requirements.${requirement}`))
+    .join(t("requirementSeparator"))
 
   function handleSubmit() {
     setError(null)
@@ -273,13 +281,22 @@ function ListingRow({
             {t(`publicationStatuses.${listing.publicationStatus}`)}
           </Badge>
           {canSubmit ? (
-            <Button type="button" size="sm" variant="outline" onClick={handleSubmit} disabled={isPending}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleSubmit}
+              disabled={isPending || gaps.length > 0}
+            >
               {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {isPending ? t("submitting") : t("submitCta")}
             </Button>
           ) : null}
         </div>
       </div>
+      {canSubmit && gaps.length > 0 ? (
+        <p className="text-xs text-muted-foreground">{t("submitIncomplete", { missing: missingLabel })}</p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-xs text-destructive">
           {error}

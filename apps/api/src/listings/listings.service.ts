@@ -18,7 +18,12 @@ import type {
   PublicListingStatusHistoryEntry,
   UpdateListingInput,
 } from '@bdph/types';
-import { LISTING_IMAGE_FORMATS, MAX_LISTING_IMAGE_BYTES, MAX_LISTING_PHOTOS } from '@bdph/types';
+import {
+  LISTING_IMAGE_FORMATS,
+  MAX_LISTING_IMAGE_BYTES,
+  MAX_LISTING_PHOTOS,
+  listingCompletenessGaps,
+} from '@bdph/types';
 import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
@@ -204,10 +209,19 @@ export class ListingsService {
   }
 
   // Seller submitting their own draft/rejected listing for moderation (FR-S8).
+  // A submission must be complete enough to be worth a moderator's time and to
+  // render meaningfully in the public catalog once approved — currently an
+  // area-level location and a price (see listingCompletenessGaps). This is the
+  // authoritative gate; the dashboard also disables Submit proactively, but the
+  // check here still holds if that UI is bypassed.
   async submitForReview(ownerId: string, listingId: string): Promise<ListingDocument> {
     const listing = await this.findOwnedOrThrow(ownerId, listingId);
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
       throw new ConflictException(`Cannot submit a listing in status "${listing.publicationStatus}"`);
+    }
+    const gaps = listingCompletenessGaps(listing);
+    if (gaps.length > 0) {
+      throw new BadRequestException(`Add the listing's ${gaps.join(' and ')} before submitting for review`);
     }
     return this.transitionStatus(listing, 'pending_review', ownerId, null);
   }
