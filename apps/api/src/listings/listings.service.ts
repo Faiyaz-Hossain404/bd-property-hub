@@ -15,6 +15,7 @@ import type {
   PublicListing,
   PublicListingLocation,
   PublicListingMedia,
+  PublicListingQuery,
   PublicListingStatusHistoryEntry,
   UpdateListingInput,
 } from '@bdph/types';
@@ -88,21 +89,38 @@ export class ListingsService {
   // is `available` or `pending` are discoverable; `sold`/`rented` drop out of
   // the feed (but stay reachable by direct link — see findPublicListing).
   // Cursor pagination over (createdAt desc, _id desc); we over-fetch one row to
-  // know whether a next page exists. An optional district filter (DISC-3) narrows
-  // to one Zilla; more facets and DISC-2 sort options come later.
+  // know whether a next page exists. Facets (FR-B1): district (DISC-3), asset and
+  // transaction type, and an inclusive BDT price range narrow the query; all are
+  // ANDed alongside the cursor's $or (a top-level field, so they compose safely).
+  // A price bound filters on `pricing.amountBdt`, so price-optional listings (no
+  // amount) drop out whenever either bound is set — intended. Index tuning for the
+  // facets belongs to the Phase-2 search/caching item; at MVP scale the existing
+  // status+availability+createdAt index serves the sort and the rest is a residual
+  // predicate. DISC-2 sort options come later.
   async findPublicPage(
-    limit: number,
-    cursor: string | null,
-    districtId: string | null,
+    query: PublicListingQuery,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
+    const { limit, cursor, district_id, asset_type, transaction_type, price_min, price_max } = query;
     const filter: FilterQuery<ListingDocument> = {
       publicationStatus: 'approved',
       availabilityStatus: { $in: ['available', 'pending'] },
     };
     // district_id is Zod-validated to 24-hex at the boundary, so casting is safe;
     // the equality narrows the keyset query to a single Zilla (DISC-3).
-    if (districtId) {
-      filter['location.districtId'] = new Types.ObjectId(districtId);
+    if (district_id) {
+      filter['location.districtId'] = new Types.ObjectId(district_id);
+    }
+    if (asset_type) {
+      filter.assetType = asset_type;
+    }
+    if (transaction_type) {
+      filter.transactionType = transaction_type;
+    }
+    if (price_min != null || price_max != null) {
+      const range: { $gte?: number; $lte?: number } = {};
+      if (price_min != null) range.$gte = price_min;
+      if (price_max != null) range.$lte = price_max;
+      filter['pricing.amountBdt'] = range;
     }
     if (cursor) {
       const { createdAt, id } = this.decodeCursor(cursor);
