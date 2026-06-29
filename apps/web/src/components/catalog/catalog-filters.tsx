@@ -107,12 +107,20 @@ export function CatalogFilters({ value, onApply }: Props) {
       return
     }
     setError(null)
-    onApply({ districtId, assetType, transactionType, priceMin: min, priceMax: max })
+    // Sort isn't part of this form — preserve the active order.
+    onApply({ districtId, assetType, transactionType, priceMin: min, priceMax: max, sort: value.sort })
   }
 
   function handleClear() {
     setError(null)
-    onApply({ districtId: "", assetType: "", transactionType: "", priceMin: "", priceMax: "" })
+    onApply({
+      districtId: "",
+      assetType: "",
+      transactionType: "",
+      priceMin: "",
+      priceMax: "",
+      sort: value.sort,
+    })
   }
 
   return (

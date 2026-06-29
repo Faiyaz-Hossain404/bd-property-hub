@@ -72,4 +72,17 @@ describe('public catalog query contract', () => {
     expect(parsed.price_min).toBe(3000);
     expect(parsed.price_max).toBe(3000);
   });
+
+  it('defaults the sort to newest', () => {
+    expect(publicListingQuerySchema.parse({}).sort).toBe('newest');
+  });
+
+  it('accepts the price sort orders', () => {
+    expect(publicListingQuerySchema.parse({ sort: 'price_asc' }).sort).toBe('price_asc');
+    expect(publicListingQuerySchema.parse({ sort: 'price_desc' }).sort).toBe('price_desc');
+  });
+
+  it('rejects an unknown sort', () => {
+    expect(() => publicListingQuerySchema.parse({ sort: 'cheapest' })).toThrow();
+  });
 });

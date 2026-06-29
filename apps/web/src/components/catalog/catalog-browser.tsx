@@ -21,6 +21,7 @@ function toBrowseParams(filters: CatalogFilterValue): BrowseListingsParams {
     transactionType: filters.transactionType || null,
     priceMin: filters.priceMin.trim() ? Number(filters.priceMin) : null,
     priceMax: filters.priceMax.trim() ? Number(filters.priceMax) : null,
+    sort: filters.sort,
   }
 }
 
@@ -38,14 +39,14 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreError, setHasMoreError] = useState(false)
   const requestIdRef = useRef(0)
-  const { districtId, assetType, transactionType, priceMin, priceMax } = filters
+  const { districtId, assetType, transactionType, priceMin, priceMax, sort } = filters
 
   const loadFirstPage = useCallback(async () => {
     const requestId = (requestIdRef.current += 1)
     setStatus("loading")
     try {
       const page = await browseListings(
-        toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax }),
+        toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax, sort }),
       )
       if (requestId !== requestIdRef.current) return
       setListings(page.data)
@@ -55,7 +56,7 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
       if (requestId !== requestIdRef.current) return
       setStatus("error")
     }
-  }, [districtId, assetType, transactionType, priceMin, priceMax])
+  }, [districtId, assetType, transactionType, priceMin, priceMax, sort])
 
   useEffect(() => {
     void loadFirstPage()
@@ -69,7 +70,7 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
     try {
       const page = await browseListings({
         cursor,
-        ...toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax }),
+        ...toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax, sort }),
       })
       // A filter change since this fetch started reloaded page 1 (bumping the
       // request id); drop this stale page so it can't append to the new results.

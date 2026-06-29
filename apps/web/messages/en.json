@@ -222,6 +222,12 @@
       "rangeError": "Min price can't be higher than max price.",
       "geoError": "Couldn't load districts. You can still filter by the other options."
     },
+    "sort": {
+      "label": "Sort by",
+      "newest": "Newest",
+      "price_asc": "Price: low to high",
+      "price_desc": "Price: high to low"
+    },
     "loadMore": "Load more",
     "loadingMore": "Loading…",
     "viewDetails": "View details",

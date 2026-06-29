@@ -222,6 +222,11 @@ export type RejectListingInput = z.infer<typeof rejectListingInputSchema>;
 // documented query string.
 export const PUBLIC_LISTING_PAGE_SIZE = 20;
 export const PUBLIC_LISTING_MAX_PAGE_SIZE = 50;
+// Catalog sort order (DISC-2). `newest` is the default keyset sort; the price
+// orders sort on `pricing.amountBdt`. "Featured" waits on promoted-listing
+// billing, so it's not offered yet.
+export const LISTING_SORTS = ['newest', 'price_asc', 'price_desc'] as const;
+export type ListingSort = (typeof LISTING_SORTS)[number];
 export const publicListingQuerySchema = z
   .object({
     limit: z.coerce
@@ -231,6 +236,7 @@ export const publicListingQuerySchema = z
       .max(PUBLIC_LISTING_MAX_PAGE_SIZE)
       .default(PUBLIC_LISTING_PAGE_SIZE),
     cursor: z.string().min(1).optional(),
+    sort: z.enum(LISTING_SORTS).default('newest'),
     // Optional Zilla facet (DISC-3). The 24-hex constraint makes it safe to pass
     // straight into the filter.
     district_id: z

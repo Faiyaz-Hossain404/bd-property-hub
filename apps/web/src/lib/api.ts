@@ -6,6 +6,7 @@ import type {
   GeoDistrict,
   GeoDivision,
   ListingMediaUploadTicket,
+  ListingSort,
   LoginInput,
   PublicListing,
   PublicUser,
@@ -175,6 +176,7 @@ export type BrowseListingsParams = {
   transactionType?: TransactionType | null;
   priceMin?: number | null;
   priceMax?: number | null;
+  sort?: ListingSort | null;
 };
 
 export function browseListings(params: BrowseListingsParams): Promise<ApiPage<PublicListing>> {
@@ -185,6 +187,8 @@ export function browseListings(params: BrowseListingsParams): Promise<ApiPage<Pu
   if (params.transactionType) search.set('transaction_type', params.transactionType);
   if (params.priceMin != null) search.set('price_min', String(params.priceMin));
   if (params.priceMax != null) search.set('price_max', String(params.priceMax));
+  // 'newest' is the server default — omit it to keep the query string clean.
+  if (params.sort && params.sort !== 'newest') search.set('sort', params.sort);
   const query = search.toString();
   return getPage<PublicListing>(`/listings${query ? `?${query}` : ''}`);
 }

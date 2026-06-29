@@ -32,6 +32,11 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 const RESUBMITTABLE_STATUSES: ListingPublicationStatus[] = ['draft', 'rejected'];
 
+// Hard ceiling for the price-sort offset cursor (≈500 pages at the max page size).
+// A real deep-paging need predates the keyset upgrade; until then this caps the
+// rows Mongo will skip for any single request.
+const MAX_CATALOG_OFFSET = 10_000;
+
 @Injectable()
 export class ListingsService {
   constructor(
@@ -86,27 +91,33 @@ export class ListingsService {
   }
 
   // Public catalog browse (LIFE-1): only `approved` listings whose availability
-  // is `available` or `pending` are discoverable; `sold`/`rented` drop out of
-  // the feed (but stay reachable by direct link — see findPublicListing).
-  // Cursor pagination over (createdAt desc, _id desc); we over-fetch one row to
-  // know whether a next page exists. Facets (FR-B1): district (DISC-3), asset and
-  // transaction type, and an inclusive BDT price range narrow the query; all are
-  // ANDed alongside the cursor's $or (a top-level field, so they compose safely).
+  // is `available` or `pending` are discoverable; `sold`/`rented` drop out of the
+  // feed (but stay reachable by direct link — see findPublicListing). We over-fetch
+  // one row to know whether a next page exists. Facets (FR-B1): district (DISC-3),
+  // asset and transaction type, and an inclusive BDT price range narrow the query.
   // A price bound filters on `pricing.amountBdt`, so price-optional listings (no
-  // amount) drop out whenever either bound is set — intended. Index tuning for the
-  // facets belongs to the Phase-2 search/caching item; at MVP scale the existing
-  // status+availability+createdAt index serves the sort and the rest is a residual
-  // predicate. DISC-2 sort options come later.
+  // amount) drop out whenever either bound is set — intended.
+  //
+  // Sort (DISC-2): `newest` keeps the keyset cursor over (createdAt desc, _id desc).
+  // The price sorts use OFFSET pagination instead, because a keyset over a nullable
+  // numeric field is unsafe — MongoDB range operators are type-bracketed, so a
+  // numeric keyset bound never matches null-priced rows and would strand the
+  // "price on request" listings after page one. Offset re-runs a stable sort each
+  // page, so nulls stay put (Mongo orders null lowest: they land first under
+  // price_asc, last under price_desc). The cursor is opaque either way, so this
+  // split is invisible to clients and can move to keyset later. Index tuning for
+  // facets/price belongs to the Phase-2 search/caching item.
   async findPublicPage(
     query: PublicListingQuery,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
-    const { limit, cursor, district_id, asset_type, transaction_type, price_min, price_max } = query;
+    const { limit, cursor, sort, district_id, asset_type, transaction_type, price_min, price_max } =
+      query;
     const filter: FilterQuery<ListingDocument> = {
       publicationStatus: 'approved',
       availabilityStatus: { $in: ['available', 'pending'] },
     };
     // district_id is Zod-validated to 24-hex at the boundary, so casting is safe;
-    // the equality narrows the keyset query to a single Zilla (DISC-3).
+    // the equality narrows the query to a single Zilla (DISC-3).
     if (district_id) {
       filter['location.districtId'] = new Types.ObjectId(district_id);
     }
@@ -122,9 +133,27 @@ export class ListingsService {
       if (price_max != null) range.$lte = price_max;
       filter['pricing.amountBdt'] = range;
     }
+
+    if (sort === 'price_asc' || sort === 'price_desc') {
+      const dir = sort === 'price_asc' ? 1 : -1;
+      const offset = cursor ? this.decodeOffsetCursor(cursor) : 0;
+      const docs = await this.listingModel
+        .find(filter)
+        .sort({ 'pricing.amountBdt': dir, _id: dir })
+        .skip(offset)
+        .limit(limit + 1)
+        .exec();
+      const hasMore = docs.length > limit;
+      const items = hasMore ? docs.slice(0, limit) : docs;
+      const nextCursor = hasMore ? this.encodeOffsetCursor(offset + limit) : null;
+      return { items, nextCursor };
+    }
+
+    // sort === 'newest' — keyset cursor over (createdAt desc, _id desc).
     if (cursor) {
       const { createdAt, id } = this.decodeCursor(cursor);
-      // Keyset: rows strictly "after" the cursor in (createdAt desc, _id desc).
+      // Keyset: rows strictly "after" the cursor; the $or is ANDed with the facet
+      // predicates above (a top-level field, so they compose safely).
       filter.$or = [{ createdAt: { $lt: createdAt } }, { createdAt, _id: { $lt: id } }];
     }
 
@@ -482,6 +511,33 @@ export class ListingsService {
       throw new BadRequestException('Invalid cursor');
     }
     return { createdAt, id: new Types.ObjectId(record.i) };
+  }
+
+  // Opaque offset cursor = base64url({ o: rowsAlreadyReturned }), used by the
+  // price sorts. Capped so a hand-crafted cursor can't ask Mongo to skip an
+  // unbounded number of rows (deep-paging DoS); the catalog moves to keyset before
+  // it ever needs to page that deep.
+  private encodeOffsetCursor(offset: number): string {
+    return Buffer.from(JSON.stringify({ o: offset }), 'utf8').toString('base64url');
+  }
+
+  private decodeOffsetCursor(cursor: string): number {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    } catch {
+      throw new BadRequestException('Invalid cursor');
+    }
+    const record = parsed as { o?: unknown };
+    if (
+      typeof record.o !== 'number' ||
+      !Number.isInteger(record.o) ||
+      record.o < 0 ||
+      record.o > MAX_CATALOG_OFFSET
+    ) {
+      throw new BadRequestException('Invalid cursor');
+    }
+    return record.o;
   }
 
   // Updates `listings.publicationStatus` and appends a `listingStatusHistory`
