@@ -2,25 +2,38 @@
 
 import { useCallback } from "react"
 import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 
-import { ASSET_TYPES, TRANSACTION_TYPES, type AssetType, type TransactionType } from "@bdph/types"
+import {
+  ASSET_TYPES,
+  LISTING_SORTS,
+  TRANSACTION_TYPES,
+  type AssetType,
+  type ListingSort,
+  type TransactionType,
+} from "@bdph/types"
 import { usePathname, useRouter } from "@/i18n/navigation"
+import { Label } from "@/components/ui/label"
 import { CatalogFilters } from "./catalog-filters"
 import { CatalogBrowser } from "./catalog-browser"
 import type { CatalogFilterValue } from "./catalog-filters.types"
 
-// The URL is the single source of truth for the active facets (web rule:
-// shareable filter state lives in the query string). This wrapper reads them via
-// useSearchParams, feeds them to both the filter bar and the grid, and writes
-// changes back with router.replace so applying a filter doesn't stack history
-// entries. A whole-BDT digits-only guard keeps a hand-edited URL from producing a
-// price the API would 400 on. Only known enum values survive parsing.
+const SORT_SELECT_CLASS =
+  "h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+
+// The URL is the single source of truth for the active facets and sort (web rule:
+// shareable state lives in the query string). This wrapper reads them via
+// useSearchParams, feeds them to the filter bar, the sort control, and the grid,
+// and writes changes back with router.replace so applying a filter doesn't stack
+// history entries. A whole-BDT digits-only guard keeps a hand-edited URL from
+// producing a price the API would 400 on; only known enum values survive parsing.
 function parseFilters(params: URLSearchParams): CatalogFilterValue {
   const districtId = params.get("district_id") ?? ""
   const assetType = params.get("asset_type")
   const transactionType = params.get("transaction_type")
   const priceMin = params.get("price_min") ?? ""
   const priceMax = params.get("price_max") ?? ""
+  const sort = params.get("sort")
   const digits = /^\d+$/
   const hex24 = /^[a-f0-9]{24}$/i
   return {
@@ -31,6 +44,7 @@ function parseFilters(params: URLSearchParams): CatalogFilterValue {
       : "",
     priceMin: digits.test(priceMin) ? priceMin : "",
     priceMax: digits.test(priceMax) ? priceMax : "",
+    sort: LISTING_SORTS.includes(sort as ListingSort) ? (sort as ListingSort) : "newest",
   }
 }
 
@@ -41,16 +55,19 @@ function toSearchString(filters: CatalogFilterValue): string {
   if (filters.transactionType) next.set("transaction_type", filters.transactionType)
   if (filters.priceMin) next.set("price_min", filters.priceMin)
   if (filters.priceMax) next.set("price_max", filters.priceMax)
+  // "newest" is the default — leave it out to keep the URL clean.
+  if (filters.sort !== "newest") next.set("sort", filters.sort)
   return next.toString()
 }
 
 export function CatalogView() {
+  const t = useTranslations("catalog")
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const filters = parseFilters(new URLSearchParams(searchParams.toString()))
 
-  const handleApply = useCallback(
+  const applyFilters = useCallback(
     (next: CatalogFilterValue) => {
       const query = toSearchString(next)
       router.replace(query ? `${pathname}?${query}` : pathname)
@@ -58,9 +75,32 @@ export function CatalogView() {
     [router, pathname],
   )
 
+  // Sort applies immediately (it's not behind the bar's Apply button), carrying
+  // the currently-committed facets along.
+  function handleSortChange(sort: ListingSort) {
+    applyFilters({ ...filters, sort })
+  }
+
   return (
     <>
-      <CatalogFilters value={filters} onApply={handleApply} />
+      <CatalogFilters value={filters} onApply={applyFilters} />
+      <div className="mb-5 flex items-center justify-end gap-2">
+        <Label htmlFor="catalog-sort" className="text-muted-foreground">
+          {t("sort.label")}
+        </Label>
+        <select
+          id="catalog-sort"
+          value={filters.sort}
+          onChange={(event) => handleSortChange(event.target.value as ListingSort)}
+          className={SORT_SELECT_CLASS}
+        >
+          {LISTING_SORTS.map((option) => (
+            <option key={option} value={option}>
+              {t(`sort.${option}`)}
+            </option>
+          ))}
+        </select>
+      </div>
       <CatalogBrowser filters={filters} />
     </>
   )

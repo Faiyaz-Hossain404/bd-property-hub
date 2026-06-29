@@ -1,4 +1,4 @@
-import type { AssetType, TransactionType } from "@bdph/types"
+import type { AssetType, ListingSort, TransactionType } from "@bdph/types"
 
 // Catalog facets in their raw form — empty string means "no filter". Asset and
 // transaction type are constrained to the known unions (plus ""); districtId is a
@@ -12,4 +12,7 @@ export type CatalogFilterValue = {
   transactionType: TransactionType | ""
   priceMin: string
   priceMax: string
+  // Sort order (DISC-2). Unlike the facets above, this applies immediately rather
+  // than via the bar's Apply button. Always set; "newest" is the default.
+  sort: ListingSort
 }
