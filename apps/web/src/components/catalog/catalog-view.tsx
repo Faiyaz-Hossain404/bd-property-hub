@@ -16,12 +16,15 @@ import type { CatalogFilterValue } from "./catalog-filters.types"
 // entries. A whole-BDT digits-only guard keeps a hand-edited URL from producing a
 // price the API would 400 on. Only known enum values survive parsing.
 function parseFilters(params: URLSearchParams): CatalogFilterValue {
+  const districtId = params.get("district_id") ?? ""
   const assetType = params.get("asset_type")
   const transactionType = params.get("transaction_type")
   const priceMin = params.get("price_min") ?? ""
   const priceMax = params.get("price_max") ?? ""
   const digits = /^\d+$/
+  const hex24 = /^[a-f0-9]{24}$/i
   return {
+    districtId: hex24.test(districtId) ? districtId : "",
     assetType: ASSET_TYPES.includes(assetType as AssetType) ? (assetType as AssetType) : "",
     transactionType: TRANSACTION_TYPES.includes(transactionType as TransactionType)
       ? (transactionType as TransactionType)
@@ -33,6 +36,7 @@ function parseFilters(params: URLSearchParams): CatalogFilterValue {
 
 function toSearchString(filters: CatalogFilterValue): string {
   const next = new URLSearchParams()
+  if (filters.districtId) next.set("district_id", filters.districtId)
   if (filters.assetType) next.set("asset_type", filters.assetType)
   if (filters.transactionType) next.set("transaction_type", filters.transactionType)
   if (filters.priceMin) next.set("price_min", filters.priceMin)

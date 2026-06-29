@@ -209,6 +209,7 @@
     "emptyFiltered": "No properties match these filters. Try widening your search.",
     "filters": {
       "title": "Filters",
+      "district": "District",
       "transactionType": "Listing type",
       "assetType": "Property type",
       "priceMin": "Min price (BDT)",
@@ -218,7 +219,8 @@
       "apply": "Apply filters",
       "clear": "Clear",
       "priceError": "Enter prices as whole numbers, with no commas.",
-      "rangeError": "Min price can't be higher than max price."
+      "rangeError": "Min price can't be higher than max price.",
+      "geoError": "Couldn't load districts. You can still filter by the other options."
     },
     "loadMore": "Load more",
     "loadingMore": "Loading…",
