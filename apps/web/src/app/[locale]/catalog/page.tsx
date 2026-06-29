@@ -1,7 +1,8 @@
+import { Suspense } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { CatalogHeader } from '@/components/catalog/catalog-header';
-import { CatalogBrowser } from '@/components/catalog/catalog-browser';
+import { CatalogView } from '@/components/catalog/catalog-view';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -20,7 +21,9 @@ export default async function CatalogPage({ params }: PageParams) {
           </h1>
           <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <CatalogBrowser />
+        <Suspense>
+          <CatalogView />
+        </Suspense>
       </main>
     </div>
   );

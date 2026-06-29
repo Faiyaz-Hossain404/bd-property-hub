@@ -1,5 +1,6 @@
 import type {
   ApiPage,
+  AssetType,
   CommitListingMediaInput,
   CreateListingInput,
   GeoDistrict,
@@ -10,6 +11,7 @@ import type {
   PublicUser,
   RegisterInput,
   RejectListingInput,
+  TransactionType,
   UpdateListingInput,
 } from '@bdph/types';
 
@@ -163,15 +165,26 @@ export function getMyListings(): Promise<PublicListing[]> {
 }
 
 // Public catalog browse (API_DESIGN.md §5) — anonymous, cursor-paginated. Pass
-// back `page.nextCursor` verbatim to fetch the next page; `districtId` is the
-// optional Zilla facet (DISC-3).
-export function browseListings(params: {
+// back `page.nextCursor` verbatim to fetch the next page. Facets (FR-B1):
+// `districtId` (DISC-3), asset/transaction type, and an inclusive whole-BDT price
+// range. Each maps to the snake_case query param the API validates.
+export type BrowseListingsParams = {
   cursor?: string | null;
   districtId?: string | null;
-}): Promise<ApiPage<PublicListing>> {
+  assetType?: AssetType | null;
+  transactionType?: TransactionType | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+};
+
+export function browseListings(params: BrowseListingsParams): Promise<ApiPage<PublicListing>> {
   const search = new URLSearchParams();
   if (params.cursor) search.set('cursor', params.cursor);
   if (params.districtId) search.set('district_id', params.districtId);
+  if (params.assetType) search.set('asset_type', params.assetType);
+  if (params.transactionType) search.set('transaction_type', params.transactionType);
+  if (params.priceMin != null) search.set('price_min', String(params.priceMin));
+  if (params.priceMax != null) search.set('price_max', String(params.priceMax));
   const query = search.toString();
   return getPage<PublicListing>(`/listings${query ? `?${query}` : ''}`);
 }

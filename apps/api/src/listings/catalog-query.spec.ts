@@ -34,4 +34,42 @@ describe('public catalog query contract', () => {
   it('rejects a limit below 1', () => {
     expect(() => publicListingQuerySchema.parse({ limit: '0' })).toThrow();
   });
+
+  it('accepts the asset and transaction type facets', () => {
+    const parsed = publicListingQuerySchema.parse({
+      asset_type: 'apartment',
+      transaction_type: 'rent',
+    });
+    expect(parsed.asset_type).toBe('apartment');
+    expect(parsed.transaction_type).toBe('rent');
+  });
+
+  it('rejects an unknown asset type', () => {
+    expect(() => publicListingQuerySchema.parse({ asset_type: 'houseboat' })).toThrow();
+  });
+
+  it('coerces price bounds from query strings', () => {
+    const parsed = publicListingQuerySchema.parse({ price_min: '1000', price_max: '5000' });
+    expect(parsed.price_min).toBe(1000);
+    expect(parsed.price_max).toBe(5000);
+  });
+
+  it('accepts a single open-ended price bound', () => {
+    expect(publicListingQuerySchema.parse({ price_min: '1000' }).price_max).toBeUndefined();
+    expect(publicListingQuerySchema.parse({ price_max: '5000' }).price_min).toBeUndefined();
+  });
+
+  it('rejects a negative price bound', () => {
+    expect(() => publicListingQuerySchema.parse({ price_min: '-1' })).toThrow();
+  });
+
+  it('rejects a reversed price range', () => {
+    expect(() => publicListingQuerySchema.parse({ price_min: '5000', price_max: '1000' })).toThrow();
+  });
+
+  it('allows an equal min and max price', () => {
+    const parsed = publicListingQuerySchema.parse({ price_min: '3000', price_max: '3000' });
+    expect(parsed.price_min).toBe(3000);
+    expect(parsed.price_max).toBe(3000);
+  });
 });

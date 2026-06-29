@@ -214,27 +214,42 @@ export type RejectListingInput = z.infer<typeof rejectListingInputSchema>;
 
 // Query params for GET /listings (public catalog browse, API_DESIGN.md §5).
 // `district_id` is the first DISC-3 filter facet (the required-selector Zilla);
-// further facets (price, asset/transaction type) and DISC-2 sort options
-// (featured/price/newest) are later increments. `limit` is coerced from the query
-// string and hard-capped (DISC-7). `cursor` is an opaque token minted by the
-// server — clients pass back `page.nextCursor` verbatim.
+// `asset_type` / `transaction_type` / `price_min` / `price_max` are the "primary"
+// facets (FR-B1). DISC-2 sort options (featured/price/newest) are a later
+// increment. `limit` is coerced from the query string and hard-capped (DISC-7).
+// `cursor` is an opaque token minted by the server — clients pass back
+// `page.nextCursor` verbatim. All facet params are snake_case to match the
+// documented query string.
 export const PUBLIC_LISTING_PAGE_SIZE = 20;
 export const PUBLIC_LISTING_MAX_PAGE_SIZE = 50;
-export const publicListingQuerySchema = z.object({
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(PUBLIC_LISTING_MAX_PAGE_SIZE)
-    .default(PUBLIC_LISTING_PAGE_SIZE),
-  cursor: z.string().min(1).optional(),
-  // Optional Zilla facet (DISC-3). snake_case matches the documented query
-  // params; the 24-hex constraint makes it safe to pass straight into the filter.
-  district_id: z
-    .string()
-    .regex(/^[a-f0-9]{24}$/i, 'district_id must be a 24-character hex id')
-    .optional(),
-});
+export const publicListingQuerySchema = z
+  .object({
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(PUBLIC_LISTING_MAX_PAGE_SIZE)
+      .default(PUBLIC_LISTING_PAGE_SIZE),
+    cursor: z.string().min(1).optional(),
+    // Optional Zilla facet (DISC-3). The 24-hex constraint makes it safe to pass
+    // straight into the filter.
+    district_id: z
+      .string()
+      .regex(/^[a-f0-9]{24}$/i, 'district_id must be a 24-character hex id')
+      .optional(),
+    asset_type: z.enum(ASSET_TYPES).optional(),
+    transaction_type: z.enum(TRANSACTION_TYPES).optional(),
+    // Inclusive price bounds in whole BDT (matches listingPricing.amountBdt). A
+    // bound filters out listings without a stated price — see findPublicPage.
+    price_min: z.coerce.number().int().nonnegative().optional(),
+    price_max: z.coerce.number().int().nonnegative().optional(),
+  })
+  // A reversed range can never match; reject it at the boundary so the client
+  // gets a clear 400 instead of a silently empty page.
+  .refine((q) => q.price_min == null || q.price_max == null || q.price_min <= q.price_max, {
+    message: 'price_min must be less than or equal to price_max',
+    path: ['price_min'],
+  });
 export type PublicListingQuery = z.infer<typeof publicListingQuerySchema>;
 
 // Area-level location on a listing's public projection (A5/MAP-2). Division +
