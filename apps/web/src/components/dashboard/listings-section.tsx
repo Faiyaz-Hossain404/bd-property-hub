@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListingPhotos } from "./listing-photos"
 import { ListingEditor } from "./listing-editor"
+import { ListingDetailsEditor } from "./listing-details-editor"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
@@ -303,7 +304,10 @@ function ListingRow({
         </p>
       ) : null}
       {canSubmit ? (
-        <ListingEditor listing={listing} onUpdated={onUpdated} t={t} />
+        <>
+          <ListingEditor listing={listing} onUpdated={onUpdated} t={t} />
+          <ListingDetailsEditor listing={listing} onUpdated={onUpdated} t={t} />
+        </>
       ) : (
         <ListingSummary listing={listing} />
       )}
