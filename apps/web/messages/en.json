@@ -170,6 +170,14 @@
         "tooLarge": "Each image must be 10 MB or smaller.",
         "wrongType": "Please choose a JPG, PNG, WebP, or HEIC image.",
         "uploadError": "Couldn't upload the photo. Please try again."
+      },
+      "history": {
+        "toggle": "Review history",
+        "loading": "Loading history…",
+        "loadError": "Couldn't load the history.",
+        "retry": "Try again",
+        "empty": "No review activity yet.",
+        "reason": "Reason: {reason}"
       }
     },
     "moderation": {
