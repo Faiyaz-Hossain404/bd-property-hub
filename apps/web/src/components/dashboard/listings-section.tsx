@@ -24,10 +24,14 @@ import { ListingPhotos } from "./listing-photos"
 import { ListingEditor } from "./listing-editor"
 import { ListingDetailsEditor } from "./listing-details-editor"
 import { ListingStatusHistory } from "./listing-status-history"
+import { ListingWithdraw } from "./listing-withdraw"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
 const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
+// A seller can withdraw a listing that's in flight or live, but not a bare draft
+// (nothing public to pull yet — that's the editor's job) or one already archived.
+const WITHDRAWABLE_STATUSES = ["pending_review", "approved", "rejected"] as const
 
 type SectionT = ReturnType<typeof useTranslations>
 
@@ -249,6 +253,9 @@ function ListingRow({
   const canSubmit = SUBMITTABLE_STATUSES.includes(
     listing.publicationStatus as (typeof SUBMITTABLE_STATUSES)[number],
   )
+  const canWithdraw = WITHDRAWABLE_STATUSES.includes(
+    listing.publicationStatus as (typeof WITHDRAWABLE_STATUSES)[number],
+  )
   // A submittable draft must also be complete (location + price). We mirror the
   // server gate here so Submit is disabled with an explanatory hint instead of
   // letting the click fail — but the API still enforces it (defense in depth).
@@ -318,6 +325,7 @@ function ListingRow({
       {listing.publicationStatus !== "draft" ? (
         <ListingStatusHistory listingId={listing.id} />
       ) : null}
+      {canWithdraw ? <ListingWithdraw listing={listing} onUpdated={onUpdated} t={t} /> : null}
     </div>
   )
 }

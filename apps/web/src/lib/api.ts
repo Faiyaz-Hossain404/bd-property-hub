@@ -210,6 +210,13 @@ export function submitListingForReview(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/submit`, {});
 }
 
+// Owner self-service withdraw (POST /listings/:id/withdraw) — archives the seller's
+// own listing and pulls it from public search (LIFE-4). One-way for now; there is no
+// restore yet, so the dashboard confirms before calling this.
+export function withdrawListing(id: string): Promise<PublicListing> {
+  return postJson<PublicListing>(`/listings/${id}/withdraw`, {});
+}
+
 // Owner-or-staff transition log for a listing (GET /listings/:id/status-history).
 // The API enforces access; the seller dashboard uses it to show the moderation
 // trail (submitted → approved/rejected) and any rejection reason.

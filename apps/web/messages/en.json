@@ -178,7 +178,13 @@
         "retry": "Try again",
         "empty": "No review activity yet.",
         "reason": "Reason: {reason}"
-      }
+      },
+      "withdrawCta": "Withdraw listing",
+      "withdrawConfirm": "Withdraw this listing? It will be archived and removed from public search. This can't be undone.",
+      "withdrawConfirmCta": "Yes, withdraw",
+      "withdrawCancel": "Cancel",
+      "withdrawing": "Withdrawing…",
+      "withdrawError": "Couldn't withdraw the listing. Please try again."
     },
     "moderation": {
       "sectionTitle": "Moderation",
