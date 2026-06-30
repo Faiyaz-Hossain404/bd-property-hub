@@ -223,6 +223,8 @@
     "emptyFiltered": "No properties match these filters. Try widening your search.",
     "filters": {
       "title": "Filters",
+      "search": "Search",
+      "searchPlaceholder": "Search by title",
       "district": "District",
       "transactionType": "Listing type",
       "assetType": "Property type",

@@ -178,6 +178,8 @@ export type BrowseListingsParams = {
   priceMin?: number | null;
   priceMax?: number | null;
   sort?: ListingSort | null;
+  // Free-text title search (DISC-8). Sent as `q`; the API escapes it server-side.
+  q?: string | null;
 };
 
 export function browseListings(params: BrowseListingsParams): Promise<ApiPage<PublicListing>> {
@@ -188,6 +190,7 @@ export function browseListings(params: BrowseListingsParams): Promise<ApiPage<Pu
   if (params.transactionType) search.set('transaction_type', params.transactionType);
   if (params.priceMin != null) search.set('price_min', String(params.priceMin));
   if (params.priceMax != null) search.set('price_max', String(params.priceMax));
+  if (params.q) search.set('q', params.q);
   // 'newest' is the server default — omit it to keep the query string clean.
   if (params.sort && params.sort !== 'newest') search.set('sort', params.sort);
   const query = search.toString();

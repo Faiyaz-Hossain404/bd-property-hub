@@ -7,6 +7,9 @@ import type { AssetType, ListingSort, TransactionType } from "@bdph/types"
 // Shared so the filter bar, the URL (de)serialization, and the browser all agree
 // on one shape.
 export type CatalogFilterValue = {
+  // Free-text title search (DISC-8); "" means no search. Like the facets below it
+  // applies via the bar's Apply button and round-trips through the URL as `q`.
+  q: string
   districtId: string
   assetType: AssetType | ""
   transactionType: TransactionType | ""

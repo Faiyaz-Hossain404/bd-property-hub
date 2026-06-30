@@ -25,6 +25,7 @@ import {
   MAX_LISTING_PHOTOS,
   listingCompletenessGaps,
 } from '@bdph/types';
+import { escapeRegExp } from './listing-search.util';
 import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
@@ -110,7 +111,7 @@ export class ListingsService {
   async findPublicPage(
     query: PublicListingQuery,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
-    const { limit, cursor, sort, district_id, asset_type, transaction_type, price_min, price_max } =
+    const { limit, cursor, sort, district_id, asset_type, transaction_type, price_min, price_max, q } =
       query;
     const filter: FilterQuery<ListingDocument> = {
       publicationStatus: 'approved',
@@ -132,6 +133,18 @@ export class ListingsService {
       if (price_min != null) range.$gte = price_min;
       if (price_max != null) range.$lte = price_max;
       filter['pricing.amountBdt'] = range;
+    }
+    // Free-text title search (DISC-8). The query text is escaped to a literal
+    // pattern so regex metacharacters from user input match verbatim — no
+    // injection / ReDoS via attacker-controlled syntax. Matches either language's
+    // title, case-insensitively. This is a collection scan (no text index yet);
+    // fine at the current catalog size — a text index / Atlas Search is the
+    // Phase-2 search/caching optimization. Built under $and so it composes with
+    // the keyset $or the `newest` cursor sets below (two top-level $or keys would
+    // otherwise clobber each other).
+    if (q) {
+      const pattern = new RegExp(escapeRegExp(q), 'i');
+      filter.$and = [{ $or: [{ titleEn: pattern }, { titleBn: pattern }] }];
     }
 
     if (sort === 'price_asc' || sort === 'price_desc') {

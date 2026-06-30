@@ -3,11 +3,11 @@ import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { DotPattern } from '@/components/ui/dot-pattern';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
+import { HeroSearch } from '@/components/home/hero-search';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -75,17 +75,7 @@ export default async function HomePage({ params }: PageParams) {
                 {t('subhead')}
               </p>
 
-              <Card className="mt-8 flex max-w-xl flex-col gap-3 p-3 shadow-lg sm:flex-row sm:items-center">
-                <Input
-                  type="search"
-                  placeholder={t('searchPlaceholder')}
-                  aria-label={t('searchPlaceholder')}
-                  className="h-12 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
-                />
-                <Button asChild size="lg" className="h-12 shrink-0 px-8">
-                  <Link href="/catalog">{t('searchCta')}</Link>
-                </Button>
-              </Card>
+              <HeroSearch />
             </div>
 
             <dl className="grid gap-4 sm:grid-cols-3 md:grid-cols-1">

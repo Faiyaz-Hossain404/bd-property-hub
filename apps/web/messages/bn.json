@@ -223,6 +223,8 @@
     "emptyFiltered": "এই ফিল্টারের সাথে কোনো সম্পত্তি মেলেনি। অনুসন্ধান আরও বিস্তৃত করুন।",
     "filters": {
       "title": "ফিল্টার",
+      "search": "অনুসন্ধান",
+      "searchPlaceholder": "শিরোনাম দিয়ে খুঁজুন",
       "district": "জেলা",
       "transactionType": "তালিকার ধরন",
       "assetType": "সম্পত্তির ধরন",

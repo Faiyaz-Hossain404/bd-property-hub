@@ -16,6 +16,7 @@ type Status = "loading" | "ready" | "error"
 // out so they never reach the query string.
 function toBrowseParams(filters: CatalogFilterValue): BrowseListingsParams {
   return {
+    q: filters.q || null,
     districtId: filters.districtId || null,
     assetType: filters.assetType || null,
     transactionType: filters.transactionType || null,
@@ -39,14 +40,14 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreError, setHasMoreError] = useState(false)
   const requestIdRef = useRef(0)
-  const { districtId, assetType, transactionType, priceMin, priceMax, sort } = filters
+  const { q, districtId, assetType, transactionType, priceMin, priceMax, sort } = filters
 
   const loadFirstPage = useCallback(async () => {
     const requestId = (requestIdRef.current += 1)
     setStatus("loading")
     try {
       const page = await browseListings(
-        toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax, sort }),
+        toBrowseParams({ q, districtId, assetType, transactionType, priceMin, priceMax, sort }),
       )
       if (requestId !== requestIdRef.current) return
       setListings(page.data)
@@ -56,7 +57,7 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
       if (requestId !== requestIdRef.current) return
       setStatus("error")
     }
-  }, [districtId, assetType, transactionType, priceMin, priceMax, sort])
+  }, [q, districtId, assetType, transactionType, priceMin, priceMax, sort])
 
   useEffect(() => {
     void loadFirstPage()
@@ -70,7 +71,7 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
     try {
       const page = await browseListings({
         cursor,
-        ...toBrowseParams({ districtId, assetType, transactionType, priceMin, priceMax, sort }),
+        ...toBrowseParams({ q, districtId, assetType, transactionType, priceMin, priceMax, sort }),
       })
       // A filter change since this fetch started reloaded page 1 (bumping the
       // request id); drop this stale page so it can't append to the new results.
@@ -114,7 +115,7 @@ export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
 
   if (listings.length === 0) {
     const hasActiveFilter = Boolean(
-      districtId || assetType || transactionType || priceMin || priceMax,
+      q || districtId || assetType || transactionType || priceMin || priceMax,
     )
     return (
       <p className="py-24 text-center text-sm text-muted-foreground">
