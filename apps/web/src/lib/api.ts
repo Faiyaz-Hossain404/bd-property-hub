@@ -9,6 +9,7 @@ import type {
   ListingSort,
   LoginInput,
   PublicListing,
+  PublicListingStatusHistoryEntry,
   PublicUser,
   RegisterInput,
   RejectListingInput,
@@ -207,6 +208,13 @@ export function updateListing(id: string, input: UpdateListingInput): Promise<Pu
 
 export function submitListingForReview(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/submit`, {});
+}
+
+// Owner-or-staff transition log for a listing (GET /listings/:id/status-history).
+// The API enforces access; the seller dashboard uses it to show the moderation
+// trail (submitted → approved/rejected) and any rejection reason.
+export function getListingStatusHistory(id: string): Promise<PublicListingStatusHistoryEntry[]> {
+  return getJson<PublicListingStatusHistoryEntry[]>(`/listings/${id}/status-history`);
 }
 
 // Public geography selectors (long-cached) backing the division → district picker.

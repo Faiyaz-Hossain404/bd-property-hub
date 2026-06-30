@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ListingPhotos } from "./listing-photos"
 import { ListingEditor } from "./listing-editor"
 import { ListingDetailsEditor } from "./listing-details-editor"
+import { ListingStatusHistory } from "./listing-status-history"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
@@ -312,6 +313,11 @@ function ListingRow({
         <ListingSummary listing={listing} />
       )}
       <ListingPhotos listing={listing} onUpdated={onUpdated} />
+      {/* Drafts have no transitions yet — only show the trail once a listing has
+          moved through review (pending/approved/rejected/archived). */}
+      {listing.publicationStatus !== "draft" ? (
+        <ListingStatusHistory listingId={listing.id} />
+      ) : null}
     </div>
   )
 }
