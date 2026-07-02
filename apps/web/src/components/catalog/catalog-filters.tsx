@@ -37,6 +37,7 @@ export function CatalogFilters({ value, onApply }: Props) {
   const t = useTranslations("catalog")
   const locale = useLocale()
 
+  const [q, setQ] = useState(value.q)
   const [districtId, setDistrictId] = useState(value.districtId)
   const [assetType, setAssetType] = useState(value.assetType)
   const [transactionType, setTransactionType] = useState(value.transactionType)
@@ -67,12 +68,13 @@ export function CatalogFilters({ value, onApply }: Props) {
   }, [])
 
   useEffect(() => {
+    setQ(value.q)
     setDistrictId(value.districtId)
     setAssetType(value.assetType)
     setTransactionType(value.transactionType)
     setPriceMin(value.priceMin)
     setPriceMax(value.priceMax)
-  }, [value.districtId, value.assetType, value.transactionType, value.priceMin, value.priceMax])
+  }, [value.q, value.districtId, value.assetType, value.transactionType, value.priceMin, value.priceMax])
 
   // Districts grouped under their division, divisions kept in their API order.
   const districtGroups = useMemo<DivisionGroup[]>(() => {
@@ -88,6 +90,7 @@ export function CatalogFilters({ value, onApply }: Props) {
   }, [divisions, districts])
 
   const hasActiveFilter =
+    value.q !== "" ||
     value.districtId !== "" ||
     value.assetType !== "" ||
     value.transactionType !== "" ||
@@ -108,12 +111,21 @@ export function CatalogFilters({ value, onApply }: Props) {
     }
     setError(null)
     // Sort isn't part of this form — preserve the active order.
-    onApply({ districtId, assetType, transactionType, priceMin: min, priceMax: max, sort: value.sort })
+    onApply({
+      q: q.trim(),
+      districtId,
+      assetType,
+      transactionType,
+      priceMin: min,
+      priceMax: max,
+      sort: value.sort,
+    })
   }
 
   function handleClear() {
     setError(null)
     onApply({
+      q: "",
       districtId: "",
       assetType: "",
       transactionType: "",
@@ -129,6 +141,19 @@ export function CatalogFilters({ value, onApply }: Props) {
       className="mb-8 rounded-xl border border-border/60 bg-muted/30 p-4"
       aria-label={t("filters.title")}
     >
+      <div className="mb-4 grid gap-1.5">
+        <Label htmlFor="filter-search">{t("filters.search")}</Label>
+        <Input
+          id="filter-search"
+          type="search"
+          value={q}
+          onChange={(event) => setQ(event.target.value)}
+          placeholder={t("filters.searchPlaceholder")}
+          maxLength={80}
+          className="h-9"
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="grid gap-1.5">
           <Label htmlFor="filter-district">{t("filters.district")}</Label>

@@ -27,7 +27,12 @@ const SORT_SELECT_CLASS =
 // and writes changes back with router.replace so applying a filter doesn't stack
 // history entries. A whole-BDT digits-only guard keeps a hand-edited URL from
 // producing a price the API would 400 on; only known enum values survive parsing.
+// Mirror of the server's q cap (publicListingQuerySchema) so a hand-edited URL
+// can't push a longer term than the API would accept.
+const MAX_SEARCH_LENGTH = 80
+
 function parseFilters(params: URLSearchParams): CatalogFilterValue {
+  const q = (params.get("q") ?? "").trim().slice(0, MAX_SEARCH_LENGTH)
   const districtId = params.get("district_id") ?? ""
   const assetType = params.get("asset_type")
   const transactionType = params.get("transaction_type")
@@ -37,6 +42,7 @@ function parseFilters(params: URLSearchParams): CatalogFilterValue {
   const digits = /^\d+$/
   const hex24 = /^[a-f0-9]{24}$/i
   return {
+    q,
     districtId: hex24.test(districtId) ? districtId : "",
     assetType: ASSET_TYPES.includes(assetType as AssetType) ? (assetType as AssetType) : "",
     transactionType: TRANSACTION_TYPES.includes(transactionType as TransactionType)
@@ -50,6 +56,7 @@ function parseFilters(params: URLSearchParams): CatalogFilterValue {
 
 function toSearchString(filters: CatalogFilterValue): string {
   const next = new URLSearchParams()
+  if (filters.q) next.set("q", filters.q)
   if (filters.districtId) next.set("district_id", filters.districtId)
   if (filters.assetType) next.set("asset_type", filters.assetType)
   if (filters.transactionType) next.set("transaction_type", filters.transactionType)

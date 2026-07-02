@@ -85,4 +85,21 @@ describe('public catalog query contract', () => {
   it('rejects an unknown sort', () => {
     expect(() => publicListingQuerySchema.parse({ sort: 'cheapest' })).toThrow();
   });
+
+  it('omits q when not provided', () => {
+    expect(publicListingQuerySchema.parse({}).q).toBeUndefined();
+  });
+
+  it('trims a search term', () => {
+    expect(publicListingQuerySchema.parse({ q: '  Gulshan  ' }).q).toBe('Gulshan');
+  });
+
+  it('collapses a blank search term to undefined', () => {
+    expect(publicListingQuerySchema.parse({ q: '   ' }).q).toBeUndefined();
+    expect(publicListingQuerySchema.parse({ q: '' }).q).toBeUndefined();
+  });
+
+  it('rejects a search term over the length cap', () => {
+    expect(() => publicListingQuerySchema.parse({ q: 'a'.repeat(81) })).toThrow();
+  });
 });

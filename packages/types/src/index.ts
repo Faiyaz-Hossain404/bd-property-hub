@@ -237,6 +237,17 @@ export const publicListingQuerySchema = z
       .default(PUBLIC_LISTING_PAGE_SIZE),
     cursor: z.string().min(1).optional(),
     sort: z.enum(LISTING_SORTS).default('newest'),
+    // Free-text search over the listing title (DISC-8). Optional; trimmed and
+    // length-capped. The service escapes it into a literal, case-insensitive regex,
+    // so punctuation from user input is matched verbatim (no regex injection). A
+    // blank value collapses to undefined so a stray `?q=` neither 400s nor filters
+    // everything out.
+    q: z
+      .string()
+      .trim()
+      .max(80)
+      .optional()
+      .transform((value) => (value && value.length > 0 ? value : undefined)),
     // Optional Zilla facet (DISC-3). The 24-hex constraint makes it safe to pass
     // straight into the filter.
     district_id: z
