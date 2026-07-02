@@ -25,10 +25,13 @@ type State =
   | { status: "notFound" }
   | { status: "ready"; listing: PublicListing }
 
-function BackLink({ label }: { label: string }) {
+// backQuery is the catalog's own query string (facets + sort), forwarded from the
+// card the buyer clicked. Empty for a deep-linked detail page, where we fall back
+// to the unfiltered catalog.
+function BackLink({ label, backQuery }: { label: string; backQuery: string }) {
   return (
     <Link
-      href="/catalog"
+      href={backQuery ? `/catalog?${backQuery}` : "/catalog"}
       className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground"
     >
       <ArrowLeft className="size-4" />
@@ -37,7 +40,7 @@ function BackLink({ label }: { label: string }) {
   )
 }
 
-export function ListingDetail({ id }: { id: string }) {
+export function ListingDetail({ id, backQuery }: { id: string; backQuery: string }) {
   const t = useTranslations("catalog")
   const locale = useLocale()
   const [state, setState] = useState<State>({ status: "loading" })
@@ -76,7 +79,7 @@ export function ListingDetail({ id }: { id: string }) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
         <p className="text-sm text-muted-foreground">{t("notFound")}</p>
-        <BackLink label={t("backToBrowse")} />
+        <BackLink label={t("backToBrowse")} backQuery={backQuery} />
       </div>
     )
   }
@@ -88,7 +91,7 @@ export function ListingDetail({ id }: { id: string }) {
         <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
           {t("retry")}
         </Button>
-        <BackLink label={t("backToBrowse")} />
+        <BackLink label={t("backToBrowse")} backQuery={backQuery} />
       </div>
     )
   }
@@ -120,7 +123,7 @@ export function ListingDetail({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <BackLink label={t("backToBrowse")} />
+      <BackLink label={t("backToBrowse")} backQuery={backQuery} />
 
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
         <ListingGallery photos={photos} />
