@@ -184,7 +184,8 @@
       "withdrawConfirmCta": "Yes, withdraw",
       "withdrawCancel": "Cancel",
       "withdrawing": "Withdrawing…",
-      "withdrawError": "Couldn't withdraw the listing. Please try again."
+      "withdrawError": "Couldn't withdraw the listing. Please try again.",
+      "viewLive": "View live listing"
     },
     "moderation": {
       "sectionTitle": "Moderation",

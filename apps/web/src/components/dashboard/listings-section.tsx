@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { LoaderCircle } from "lucide-react"
+import { Eye, LoaderCircle } from "lucide-react"
 
 import {
   ASSET_TYPES,
@@ -15,6 +15,7 @@ import {
   type TransactionType,
 } from "@bdph/types"
 import { ApiError, becomeSeller, createListingDraft, getMyListings, submitListingForReview } from "@/lib/api"
+import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -256,6 +257,9 @@ function ListingRow({
   const canWithdraw = WITHDRAWABLE_STATUSES.includes(
     listing.publicationStatus as (typeof WITHDRAWABLE_STATUSES)[number],
   )
+  // Only `approved` listings are publicly reachable (the catalog detail route
+  // serves nothing else), so that's the only status we link out to.
+  const canViewLive = listing.publicationStatus === "approved"
   // A submittable draft must also be complete (location + price). We mirror the
   // server gate here so Submit is disabled with an explanatory hint instead of
   // letting the click fail — but the API still enforces it (defense in depth).
@@ -299,6 +303,14 @@ function ListingRow({
             >
               {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {isPending ? t("submitting") : t("submitCta")}
+            </Button>
+          ) : null}
+          {canViewLive ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/catalog/${listing.id}`}>
+                <Eye className="size-4" />
+                {t("viewLive")}
+              </Link>
             </Button>
           ) : null}
         </div>
