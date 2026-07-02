@@ -1,6 +1,7 @@
 "use client"
 
 import { useLocale, useTranslations } from "next-intl"
+import { useSearchParams } from "next/navigation"
 import { ImageOff } from "lucide-react"
 
 import type { PublicListing } from "@bdph/types"
@@ -20,9 +21,16 @@ export function ListingCard({ listing }: Props) {
   const place = locationLabel(listing.location, locale)
   const price = priceLabel(listing.pricing, locale, t)
 
+  // Carry the active catalog query onto the detail link so the detail page's
+  // "back to browse" can return the buyer to the same search/filters/sort (and
+  // so a shared detail link keeps that context). The detail page ignores these
+  // params for loading — it keys off the route id.
+  const catalogQuery = useSearchParams().toString()
+  const href = catalogQuery ? `/catalog/${listing.id}?${catalogQuery}` : `/catalog/${listing.id}`
+
   return (
     <Link
-      href={`/catalog/${listing.id}`}
+      href={href}
       className="group flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 transition hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
