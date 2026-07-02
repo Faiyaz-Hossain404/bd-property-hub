@@ -214,10 +214,16 @@ export function submitListingForReview(id: string): Promise<PublicListing> {
 }
 
 // Owner self-service withdraw (POST /listings/:id/withdraw) — archives the seller's
-// own listing and pulls it from public search (LIFE-4). One-way for now; there is no
-// restore yet, so the dashboard confirms before calling this.
+// own listing and pulls it from public search (LIFE-4). Reversible via
+// restoreListing; the dashboard still confirms first since it drops from search.
 export function withdrawListing(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/withdraw`, {});
+}
+
+// Owner self-service restore (POST /listings/:id/restore) — brings an archived
+// listing back as a draft so the seller can edit and resubmit for review (LIFE-4).
+export function restoreListing(id: string): Promise<PublicListing> {
+  return postJson<PublicListing>(`/listings/${id}/restore`, {});
 }
 
 // Owner-or-staff transition log for a listing (GET /listings/:id/status-history).
