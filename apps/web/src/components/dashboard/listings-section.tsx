@@ -26,6 +26,7 @@ import { ListingEditor } from "./listing-editor"
 import { ListingDetailsEditor } from "./listing-details-editor"
 import { ListingStatusHistory } from "./listing-status-history"
 import { ListingWithdraw } from "./listing-withdraw"
+import { ListingRestore } from "./listing-restore"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
 
 const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
@@ -260,6 +261,9 @@ function ListingRow({
   // Only `approved` listings are publicly reachable (the catalog detail route
   // serves nothing else), so that's the only status we link out to.
   const canViewLive = listing.publicationStatus === "approved"
+  // An archived listing can be restored (back to draft) so the seller can edit
+  // and resubmit — the mirror of withdraw.
+  const canRestore = listing.publicationStatus === "archived"
   // A submittable draft must also be complete (location + price). We mirror the
   // server gate here so Submit is disabled with an explanatory hint instead of
   // letting the click fail — but the API still enforces it (defense in depth).
@@ -338,6 +342,7 @@ function ListingRow({
         <ListingStatusHistory listingId={listing.id} />
       ) : null}
       {canWithdraw ? <ListingWithdraw listing={listing} onUpdated={onUpdated} t={t} /> : null}
+      {canRestore ? <ListingRestore listing={listing} onUpdated={onUpdated} t={t} /> : null}
     </div>
   )
 }

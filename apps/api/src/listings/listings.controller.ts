@@ -74,6 +74,18 @@ export class ListingsController {
     return this.listings.toPublic(listing);
   }
 
+  // Owner self-service only, same as withdraw above — restore() checks ownership
+  // against the caller's id, so staff get a 403 rather than a cross-owner grant.
+  // Keep it '@Roles('seller')'; don't broaden it or swap in a lookup that skips
+  // the ownership check.
+  @Post('listings/:id/restore')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('seller')
+  async restore(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
+    const listing = await this.listings.restore(user.id, id);
+    return this.listings.toPublic(listing);
+  }
+
   @Get('listings/:id/status-history')
   @UseGuards(SessionAuthGuard)
   async statusHistory(

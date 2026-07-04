@@ -257,15 +257,26 @@ export class ListingsService {
   }
 
   // Seller withdrawing their own listing (LIFE-4) — hides it from search while
-  // retaining the record. One-way transition for now; restore is a separate,
-  // not-yet-built increment (LIFE-4 also re-enters moderation on restore if
-  // content changed, which needs its own design).
+  // retaining the record. Reversible via restore() below.
   async withdraw(ownerId: string, listingId: string): Promise<ListingDocument> {
     const listing = await this.findOwnedOrThrow(ownerId, listingId);
     if (listing.publicationStatus === 'archived') {
       throw new ConflictException('Listing is already archived');
     }
     return this.transitionStatus(listing, 'archived', ownerId, null);
+  }
+
+  // Seller restoring their own archived listing (LIFE-4). It returns to `draft`
+  // (not straight back to `approved`) so it re-enters the normal submit →
+  // moderate flow — restoring must never republish content to the public catalog
+  // without a fresh review. Only an archived listing can be restored; anything
+  // else is a no-op the caller shouldn't have offered, so it 409s.
+  async restore(ownerId: string, listingId: string): Promise<ListingDocument> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    if (listing.publicationStatus !== 'archived') {
+      throw new ConflictException('Only an archived listing can be restored');
+    }
+    return this.transitionStatus(listing, 'draft', ownerId, null);
   }
 
   // Seller submitting their own draft/rejected listing for moderation (FR-S8).

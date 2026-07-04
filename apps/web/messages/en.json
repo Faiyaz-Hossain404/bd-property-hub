@@ -185,7 +185,10 @@
       "withdrawCancel": "Cancel",
       "withdrawing": "Withdrawing…",
       "withdrawError": "Couldn't withdraw the listing. Please try again.",
-      "viewLive": "View live listing"
+      "viewLive": "View live listing",
+      "restoreCta": "Restore listing",
+      "restoring": "Restoring…",
+      "restoreError": "Couldn't restore the listing. Please try again."
     },
     "moderation": {
       "sectionTitle": "Moderation",
