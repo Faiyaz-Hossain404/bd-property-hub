@@ -84,6 +84,12 @@ export class ListingsService {
   }
 
   async findStatusHistory(listingId: string): Promise<PublicListingStatusHistoryEntry[]> {
+    // Same malformed-id guard as findOrThrow. The controller already calls the
+    // guarded findById() before this, so a bad id is a clean 404 in practice —
+    // this keeps that true if this method is ever called on its own.
+    if (!Types.ObjectId.isValid(listingId)) {
+      throw new NotFoundException('Listing not found');
+    }
     const entries = await this.statusHistoryModel
       .find({ listingId: new Types.ObjectId(listingId) })
       .sort({ createdAt: 1 })
@@ -497,6 +503,13 @@ export class ListingsService {
   }
 
   private async findOrThrow(listingId: string): Promise<ListingDocument> {
+    // A malformed id is treated as "not found" rather than letting Mongoose
+    // throw a CastError (which surfaces as a 500). Every owner/staff path routes
+    // through here (update, withdraw, restore, submit, media, moderation,
+    // status-history), so this one guard keeps them all returning a clean 404.
+    if (!Types.ObjectId.isValid(listingId)) {
+      throw new NotFoundException('Listing not found');
+    }
     const listing = await this.listingModel.findById(listingId).exec();
     if (!listing) throw new NotFoundException('Listing not found');
     return listing;
