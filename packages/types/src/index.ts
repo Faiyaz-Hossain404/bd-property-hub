@@ -318,6 +318,32 @@ export interface PublicListingStatusHistoryEntry {
   createdAt: string;
 }
 
+// --- Saved listings / favorites ---------------------------------------------
+// A buyer can bookmark listings to revisit them from their dashboard. A save is
+// one (user, listing) pair — see SavedListing schema. Saving is idempotent, so
+// the same listing can only be saved once per user.
+
+// A soft per-user cap on how many listings one buyer may save. Not a security
+// boundary — it bounds the favorites collection and keeps the dashboard's
+// hydration query ($in over saved ids) tractable. Enforced in
+// SavedListingsService.save before the upsert.
+export const MAX_SAVED_LISTINGS = 500;
+
+// Boundary input for POST /me/saved. Only a 24-hex listing id is accepted; the
+// service additionally checks the listing exists and is publicly viewable.
+export const saveListingInputSchema = z.object({
+  listingId: z.string().regex(/^[a-f0-9]{24}$/i, 'listingId must be a 24-character hex id'),
+});
+export type SaveListingInput = z.infer<typeof saveListingInputSchema>;
+
+// Client-safe projection of a saved-listing record (the favorite itself, not the
+// listing). The full listing is hydrated separately via GET /me/saved.
+export interface PublicSavedListing {
+  id: string;
+  listingId: string;
+  createdAt: string;
+}
+
 // --- Geography (DATABASE_DESIGN.md §4, FR-G2 / MAP-5) ------------------------
 // Canonical Bangladesh administrative hierarchy, seeded as small reference
 // collections: division → district (Zilla) → city/upazila → area/thana. This

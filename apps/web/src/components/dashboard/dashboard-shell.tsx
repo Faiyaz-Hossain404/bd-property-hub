@@ -17,6 +17,7 @@ import { DotPattern } from "@/components/ui/dot-pattern"
 import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { LogoutButton } from "@/components/dashboard/logout-button"
 import { ListingsSection } from "@/components/dashboard/listings-section"
+import { SavedSection } from "@/components/dashboard/saved-section"
 import { ModerationSection } from "@/components/dashboard/moderation-section"
 
 const MODERATOR_ROLES = ["admin", "super_admin"] as const
@@ -108,6 +109,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           </Card>
 
           <ListingsSection user={user} onUserRefresh={onUserRefresh} />
+          <SavedSection />
           {isModerator ? <ModerationSection /> : null}
         </div>
       </main>

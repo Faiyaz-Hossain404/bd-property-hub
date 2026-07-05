@@ -190,6 +190,17 @@
       "restoring": "Restoring…",
       "restoreError": "Couldn't restore the listing. Please try again."
     },
+    "saved": {
+      "sectionTitle": "Saved properties",
+      "cardTitle": "Your saved properties",
+      "cardDescription": "Properties you've saved while browsing. Remove any you're no longer interested in.",
+      "loading": "Loading your saved properties…",
+      "loadError": "Couldn't load your saved properties.",
+      "empty": "No saved properties yet. Tap the heart on any listing to save it here.",
+      "view": "View",
+      "remove": "Remove",
+      "removeError": "Couldn't remove this property. Please try again."
+    },
     "moderation": {
       "sectionTitle": "Moderation",
       "queueTitle": "Listings waiting for review",
@@ -265,6 +276,13 @@
     "perMonth": "/mo",
     "perYear": "/yr",
     "groupPurchase": "Co-ownership",
+    "save": {
+      "save": "Save",
+      "saved": "Saved",
+      "loading": "Loading…",
+      "signInToSave": "Sign in to save",
+      "error": "Couldn't update your saved properties. Please try again."
+    },
     "assetTypes": {
       "apartment": "Apartment",
       "land": "Land",

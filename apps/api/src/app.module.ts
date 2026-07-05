@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ListingsModule } from './listings/listings.module';
+import { SavedListingsModule } from './saved/saved-listings.module';
 import { GeoModule } from './geo/geo.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { GeoModule } from './geo/geo.module';
     UsersModule,
     AuthModule,
     ListingsModule,
+    SavedListingsModule,
     GeoModule,
   ],
 })

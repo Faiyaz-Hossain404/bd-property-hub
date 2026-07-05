@@ -18,6 +18,7 @@ import {
   priceLabel,
 } from "@/lib/listing-display"
 import { ListingGallery } from "./listing-gallery"
+import { SaveListingButton } from "./save-listing-button"
 
 type State =
   | { status: "loading" }
@@ -142,6 +143,8 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
           </h1>
 
           <p className="font-heading text-2xl font-bold text-clay">{price}</p>
+
+          <SaveListingButton listingId={listing.id} />
 
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="size-4 shrink-0" />
