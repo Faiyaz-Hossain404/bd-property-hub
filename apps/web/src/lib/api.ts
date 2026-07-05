@@ -10,6 +10,7 @@ import type {
   LoginInput,
   PublicListing,
   PublicListingStatusHistoryEntry,
+  PublicSavedListing,
   PublicUser,
   RegisterInput,
   RejectListingInput,
@@ -111,6 +112,26 @@ async function getPage<T>(path: string): Promise<ApiPage<T>> {
   }
 
   return body as ApiPage<T>;
+}
+
+// DELETE with no meaningful response body (the API replies 204). Resolves on
+// success, throws ApiError on failure — mirrors the error handling of the
+// read/write helpers above.
+async function deleteJson(path: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+  } catch {
+    throw new ApiError('Network request failed', 0);
+  }
+
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    throw new ApiError(messageFromBody(body, 'Request failed'), response.status);
+  }
 }
 
 export function registerUser(input: RegisterInput): Promise<PublicUser> {
@@ -231,6 +252,32 @@ export function restoreListing(id: string): Promise<PublicListing> {
 // trail (submitted → approved/rejected) and any rejection reason.
 export function getListingStatusHistory(id: string): Promise<PublicListingStatusHistoryEntry[]> {
   return getJson<PublicListingStatusHistoryEntry[]>(`/listings/${id}/status-history`);
+}
+
+// --- Saved listings / favorites ---------------------------------------------
+// All four routes are session-guarded and scoped to the current user server-side.
+
+// The current user's saved listings, hydrated to full listings for the dashboard,
+// newest-saved first. Listings no longer public (withdrawn/removed) drop off.
+export function getSavedListings(): Promise<PublicListing[]> {
+  return getJson<PublicListing[]>('/me/saved');
+}
+
+// Just the saved listing ids — used to render the correct save/unsave toggle
+// state on the detail page without hydrating every saved listing.
+export function getSavedListingIds(): Promise<string[]> {
+  return getJson<string[]>('/me/saved/ids');
+}
+
+// Bookmark a listing (idempotent server-side). Returns the saved record.
+export function saveListing(listingId: string): Promise<PublicSavedListing> {
+  return postJson<PublicSavedListing>('/me/saved', { listingId });
+}
+
+// Remove a bookmark (idempotent server-side — unsaving something not saved is a
+// no-op that still resolves).
+export function unsaveListing(listingId: string): Promise<void> {
+  return deleteJson(`/me/saved/${listingId}`);
 }
 
 // Public geography selectors (long-cached) backing the division → district picker.

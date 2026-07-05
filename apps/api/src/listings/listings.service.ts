@@ -208,6 +208,19 @@ export class ListingsService {
     return listing;
   }
 
+  // Approved (publicly viewable) listings for a set of ids — used by saved
+  // listings (favorites) to hydrate a buyer's bookmarks. Mirrors findPublicListing's
+  // visibility rule: only `approved` listings are returned, and malformed ids are
+  // dropped rather than throwing, so a stale/removed favorite just doesn't appear.
+  // Order is not guaranteed here; the caller re-orders by their own criteria.
+  async findPublicByIds(listingIds: string[]): Promise<ListingDocument[]> {
+    const validIds = listingIds.filter((id) => Types.ObjectId.isValid(id));
+    if (validIds.length === 0) return [];
+    return this.listingModel
+      .find({ _id: { $in: validIds }, publicationStatus: 'approved' })
+      .exec();
+  }
+
   // Seller editing their own draft/rejected listing's content (fields filled
   // in after createDraft, or corrections after a MOD-1 rejection) before
   // (re)submitting. Not allowed once pending_review/approved/archived — the

@@ -24,5 +24,8 @@ import { ListingsService } from './listings.service';
   ],
   controllers: [CatalogController, ListingsController, ListingMediaController, ModerationController],
   providers: [ListingsService, RolesGuard],
+  // Exported so SavedListingsModule can check a listing is publicly viewable
+  // before saving it and hydrate a buyer's saved listings.
+  exports: [ListingsService],
 })
 export class ListingsModule {}
