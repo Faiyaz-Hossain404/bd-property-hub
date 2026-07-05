@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
@@ -40,6 +41,8 @@ const MAX_CATALOG_OFFSET = 10_000;
 
 @Injectable()
 export class ListingsService {
+  private readonly logger = new Logger(ListingsService.name);
+
   constructor(
     @InjectModel(Listing.name) private readonly listingModel: Model<ListingDocument>,
     @InjectModel(ListingStatusHistory.name)
@@ -504,13 +507,32 @@ export class ListingsService {
       throw new NotFoundException('Photo not found');
     }
 
-    listing.media.splice(index, 1);
+    const [removed] = listing.media.splice(index, 1);
     listing.media.forEach((item, position) => {
       item.position = position;
     });
     listing.markModified('media');
     await listing.save();
+
+    // The DB (source of truth) is now updated, so also delete the underlying
+    // Cloudinary binary to avoid leaving an orphan in storage. Best-effort: the
+    // remove has already succeeded, so a storage-delete failure is logged, not
+    // surfaced to the caller.
+    await this.deleteMediaAsset(removed);
     return listing;
+  }
+
+  // Best-effort deletion of a media item's stored binary. Never throws — a failure
+  // here just leaves an orphaned asset (the prior behavior), which a housekeeping
+  // sweep can reclaim later; it must not fail the user's remove.
+  private async deleteMediaAsset(media: ListingMedia | undefined): Promise<void> {
+    if (!media || !this.cloudinary.isConfigured()) return;
+    try {
+      await this.cloudinary.destroy(media.storageKey);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to delete Cloudinary asset "${media.storageKey}": ${message}`);
+    }
   }
 
   // Reorder a listing's photos. Owner-only and editable-only, like the other media
