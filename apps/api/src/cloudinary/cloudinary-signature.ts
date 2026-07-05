@@ -31,7 +31,11 @@ export function parseCloudinaryUrl(raw: string | undefined | null): CloudinaryCr
 
 // Cloudinary signs a request by sorting the params by key, joining as `k=v` with
 // `&`, appending the api_secret, and taking the SHA-1 hex digest. Empty values are
-// dropped. Used both to sign an upload request and to recompute a response signature.
+// dropped. Used to sign an upload request, recompute a response signature, and
+// sign a destroy.
+// NOTE: SHA-1 is mandated by Cloudinary's signing scheme, not a choice — do NOT
+// "upgrade" it to a stronger hash or every signature Cloudinary checks will fail.
+// (The relevant property here is preimage resistance, which SHA-1 still holds.)
 export function signCloudinaryParams(
   params: Record<string, string | number>,
   apiSecret: string,

@@ -79,6 +79,41 @@ export class CloudinaryService {
     };
   }
 
+  // Delete a stored asset by its public_id (the media storageKey). Used to clean
+  // up the binary when a seller removes a listing photo so storage doesn't fill
+  // with orphans. Idempotent: Cloudinary answers "not found" for an already-gone
+  // asset, which we treat as success. Throws on a transport failure or any other
+  // result so the caller can decide (the listings service treats it best-effort).
+  async destroy(publicId: string): Promise<void> {
+    const creds = this.requireCredentials();
+    const timestamp = Math.floor(Date.now() / 1000);
+    // Cloudinary signs a destroy over the same sorted-params scheme as an upload.
+    const signature = signCloudinaryParams({ public_id: publicId, timestamp }, creds.apiSecret);
+    const body = new URLSearchParams({
+      public_id: publicId,
+      api_key: creds.apiKey,
+      timestamp: String(timestamp),
+      signature,
+    });
+
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://api.cloudinary.com/v1_1/${creds.cloudName}/image/destroy`,
+        { method: 'POST', body },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Cloudinary destroy request failed: ${message}`);
+    }
+
+    const payload = (await response.json().catch(() => null)) as { result?: string } | null;
+    const result = payload?.result;
+    if (result !== 'ok' && result !== 'not found') {
+      throw new Error(`Cloudinary destroy returned an unexpected result: ${result ?? 'no body'}`);
+    }
+  }
+
   private requireCredentials(): CloudinaryCredentials {
     if (!this.credentials) {
       throw new ServiceUnavailableException('Media uploads are not configured');
