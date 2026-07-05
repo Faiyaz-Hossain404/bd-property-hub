@@ -169,7 +169,13 @@
         "uploading": "Uploading…",
         "tooLarge": "Each image must be 10 MB or smaller.",
         "wrongType": "Please choose a JPG, PNG, WebP, or HEIC image.",
-        "uploadError": "Couldn't upload the photo. Please try again."
+        "uploadError": "Couldn't upload the photo. Please try again.",
+        "cover": "Cover",
+        "makeCover": "Make cover photo",
+        "moveLeft": "Move earlier",
+        "moveRight": "Move later",
+        "remove": "Remove photo",
+        "updateError": "Couldn't update the photos. Please try again."
       },
       "history": {
         "toggle": "Review history",

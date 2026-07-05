@@ -1,11 +1,17 @@
 "use client"
 
-import { useRef, useState, useTransition, type ChangeEvent } from "react"
+import { useRef, useState, useTransition, type ChangeEvent, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
-import { ImagePlus, LoaderCircle } from "lucide-react"
+import { ChevronLeft, ChevronRight, ImagePlus, LoaderCircle, Star, Trash2 } from "lucide-react"
 
 import type { PublicListing } from "@bdph/types"
-import { ApiError, commitListingMedia, getListingUploadTicket } from "@/lib/api"
+import {
+  ApiError,
+  commitListingMedia,
+  getListingUploadTicket,
+  removeListingMedia,
+  reorderListingMedia,
+} from "@/lib/api"
 import { uploadImageToCloudinary } from "@/lib/cloudinary-upload"
 import { Button } from "@/components/ui/button"
 
@@ -28,6 +34,42 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
 
   const photos = listing.media
   const atLimit = photos.length >= MAX_PHOTOS
+  const orderIds = photos.map((photo) => photo.id)
+
+  // Shared runner for the reorder/remove operations: clears prior errors, awaits
+  // the API call, and hands the refreshed listing back to the parent. Any op in
+  // flight disables all controls (isPending), so orderings can't race.
+  function runPhotoOp(op: () => Promise<PublicListing>) {
+    setError(null)
+    startTransition(async () => {
+      try {
+        onUpdated(await op())
+      } catch (opError) {
+        setError(opError instanceof ApiError ? opError.message : t("photos.updateError"))
+      }
+    })
+  }
+
+  function handleMakeCover(id: string) {
+    runPhotoOp(() =>
+      reorderListingMedia(listing.id, [id, ...orderIds.filter((other) => other !== id)]),
+    )
+  }
+
+  function handleMove(id: string, direction: -1 | 1) {
+    const index = orderIds.indexOf(id)
+    const target = index + direction
+    if (index === -1 || target < 0 || target >= orderIds.length) return
+    const next = [...orderIds]
+    const moved = next[index]!
+    next[index] = next[target]!
+    next[target] = moved
+    runPhotoOp(() => reorderListingMedia(listing.id, next))
+  }
+
+  function handleRemove(id: string) {
+    runPhotoOp(() => removeListingMedia(listing.id, id))
+  }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -90,23 +132,65 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
 
       {photos.length > 0 ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {photos.map((photo) => (
-            <li
-              key={photo.id}
-              className="overflow-hidden rounded-md border border-border/60 bg-muted"
-            >
-              {/* Cloudinary serves an optimized, EXIF-stripped image; a plain img
-                  avoids next/image remote-host config for these thumbnails. */}
-              <img
-                src={photo.url}
-                alt=""
-                width={photo.width ?? 320}
-                height={photo.height ?? 240}
-                loading="lazy"
-                className="aspect-[4/3] h-auto w-full object-cover"
-              />
-            </li>
-          ))}
+          {photos.map((photo, index) => {
+            const isCover = index === 0
+            return (
+              <li
+                key={photo.id}
+                className="group relative overflow-hidden rounded-md border border-border/60 bg-muted"
+              >
+                {/* Cloudinary serves an optimized, EXIF-stripped image; a plain img
+                    avoids next/image remote-host config for these thumbnails. */}
+                <img
+                  src={photo.url}
+                  alt=""
+                  width={photo.width ?? 320}
+                  height={photo.height ?? 240}
+                  loading="lazy"
+                  className="aspect-[4/3] h-auto w-full object-cover"
+                />
+
+                {isCover ? (
+                  <span className="absolute top-1 left-1 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-medium text-background">
+                    {t("photos.cover")}
+                  </span>
+                ) : null}
+
+                {/* Controls overlay — always available; a light backdrop keeps the
+                    icons legible over any photo. */}
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-foreground/45 p-1">
+                  <PhotoControl
+                    label={t("photos.moveLeft")}
+                    disabled={isPending || index === 0}
+                    onClick={() => handleMove(photo.id, -1)}
+                  >
+                    <ChevronLeft className="size-3.5" />
+                  </PhotoControl>
+                  <PhotoControl
+                    label={t("photos.moveRight")}
+                    disabled={isPending || index === photos.length - 1}
+                    onClick={() => handleMove(photo.id, 1)}
+                  >
+                    <ChevronRight className="size-3.5" />
+                  </PhotoControl>
+                  <PhotoControl
+                    label={t("photos.makeCover")}
+                    disabled={isPending || isCover}
+                    onClick={() => handleMakeCover(photo.id)}
+                  >
+                    <Star className="size-3.5" />
+                  </PhotoControl>
+                  <PhotoControl
+                    label={t("photos.remove")}
+                    disabled={isPending}
+                    onClick={() => handleRemove(photo.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </PhotoControl>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       ) : (
         <p className="text-xs text-muted-foreground">{t("photos.empty")}</p>
@@ -118,5 +202,32 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
         </p>
       ) : null}
     </div>
+  )
+}
+
+// Small icon button used in the per-photo controls overlay. The visible label is
+// icon-only, so the text label drives both the tooltip and the accessible name.
+function PhotoControl({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string
+  disabled: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex size-6 items-center justify-center rounded bg-background/90 text-foreground transition hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {children}
+    </button>
   )
 }

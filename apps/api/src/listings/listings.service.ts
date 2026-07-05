@@ -488,6 +488,72 @@ export class ListingsService {
     return updated;
   }
 
+  // Remove one photo from a listing. Owner-only and only while the listing is
+  // still editable (same gate as upload). The photo is addressed by its embedded
+  // subdocument id (PublicListingMedia.id). After removal the remaining photos are
+  // renumbered 0..n-1 so positions stay contiguous and the cover (position 0) is
+  // always well-defined. The Cloudinary binary is intentionally left in place —
+  // there is no storage-delete path yet, so the orphaned asset (in this listing's
+  // private folder) is cleaned up by a later housekeeping step.
+  async removeMedia(ownerId: string, listingId: string, mediaId: string): Promise<ListingDocument> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    this.assertEditable(listing);
+
+    const index = listing.media.findIndex((item) => this.mediaSubdocId(item) === mediaId);
+    if (index === -1) {
+      throw new NotFoundException('Photo not found');
+    }
+
+    listing.media.splice(index, 1);
+    listing.media.forEach((item, position) => {
+      item.position = position;
+    });
+    listing.markModified('media');
+    await listing.save();
+    return listing;
+  }
+
+  // Reorder a listing's photos. Owner-only and editable-only, like the other media
+  // operations. `order` must be a permutation of the listing's current photo ids —
+  // every existing photo listed exactly once — which rules out a stale client that
+  // would otherwise drop or duplicate photos. order[0] becomes the cover (position
+  // 0). Today every media item is a `ready` photo, so the client's visible list
+  // matches the stored set; if non-photo/pending media is ever added, this rule
+  // will need to account for items the client can't see.
+  async reorderMedia(
+    ownerId: string,
+    listingId: string,
+    order: string[],
+  ): Promise<ListingDocument> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    this.assertEditable(listing);
+
+    const currentIds = listing.media.map((item) => this.mediaSubdocId(item));
+    const isPermutation =
+      order.length === currentIds.length &&
+      new Set(order).size === order.length &&
+      order.every((id) => currentIds.includes(id));
+    if (!isPermutation) {
+      throw new BadRequestException('Order must list each existing photo exactly once');
+    }
+
+    const byId = new Map(listing.media.map((item) => [this.mediaSubdocId(item), item]));
+    const reordered = order.map((id, position) => {
+      const item = byId.get(id)!;
+      item.position = position;
+      return item;
+    });
+    listing.set('media', reordered);
+    await listing.save();
+    return listing;
+  }
+
+  // The embedded media item's own _id as a string. Mongoose adds an `_id` to every
+  // array subdocument; the cast surfaces it for the plain-typed media array.
+  private mediaSubdocId(media: ListingMedia): string {
+    return (media as ListingMedia & { _id: Types.ObjectId })._id.toString();
+  }
+
   // Public projection of the media array: only `ready` items, ordered by position.
   // `url` is the server-built delivery URL. Storage internals and any sensitive
   // document data never appear here (A5). The `_id` cast is safe — Mongoose adds
