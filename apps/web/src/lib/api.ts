@@ -114,10 +114,10 @@ async function getPage<T>(path: string): Promise<ApiPage<T>> {
   return body as ApiPage<T>;
 }
 
-// DELETE with no meaningful response body (the API replies 204). Resolves on
-// success, throws ApiError on failure — mirrors the error handling of the
-// read/write helpers above.
-async function deleteJson(path: string): Promise<void> {
+// DELETE helper. Handles both shapes we use: a 204 with no body (returns
+// undefined) and a 200 that carries the `{ data }` envelope (returns the
+// unwrapped payload). Throws ApiError on failure — mirrors the read/write helpers.
+async function deleteJson<T = void>(path: string): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -128,10 +128,13 @@ async function deleteJson(path: string): Promise<void> {
     throw new ApiError('Network request failed', 0);
   }
 
+  const body: unknown = await response.json().catch(() => null);
+
   if (!response.ok) {
-    const body: unknown = await response.json().catch(() => null);
     throw new ApiError(messageFromBody(body, 'Request failed'), response.status);
   }
+
+  return (body as { data: T } | null)?.data as T;
 }
 
 export function registerUser(input: RegisterInput): Promise<PublicUser> {
@@ -181,6 +184,18 @@ export function commitListingMedia(
   input: CommitListingMediaInput,
 ): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/media/commit`, input);
+}
+
+// Owner-only photo management (edit-status listings). Both return the refreshed
+// listing so the dashboard can update in place.
+export function removeListingMedia(id: string, mediaId: string): Promise<PublicListing> {
+  return deleteJson<PublicListing>(`/listings/${id}/media/${mediaId}`);
+}
+
+// `order` is the full list of the listing's photo ids in the desired order;
+// order[0] becomes the cover.
+export function reorderListingMedia(id: string, order: string[]): Promise<PublicListing> {
+  return patchJson<PublicListing>(`/listings/${id}/media/order`, { order });
 }
 
 export function getMyListings(): Promise<PublicListing[]> {

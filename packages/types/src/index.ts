@@ -129,6 +129,20 @@ export const commitListingMediaInputSchema = z.object({
 });
 export type CommitListingMediaInput = z.infer<typeof commitListingMediaInputSchema>;
 
+// Boundary input for PATCH /listings/:id/media/order — the seller's desired photo
+// order, given as the full list of the listing's photo ids (each the media item's
+// `id` from PublicListingMedia). The first id becomes the cover. The service
+// requires this to be a permutation of the listing's current photos — every
+// existing id exactly once — so a stale or partial list is rejected rather than
+// silently dropping photos.
+export const reorderListingMediaInputSchema = z.object({
+  order: z
+    .array(z.string().regex(/^[a-f0-9]{24}$/i, 'media id must be a 24-character hex id'))
+    .min(1)
+    .max(MAX_LISTING_PHOTOS),
+});
+export type ReorderListingMediaInput = z.infer<typeof reorderListingMediaInputSchema>;
+
 // Client-safe projection of one media item. Only `ready` media is ever included.
 // `url` is a server-built Cloudinary delivery URL (the seller never supplies it).
 // Never carries storage internals or any sensitive-document data (A5).
