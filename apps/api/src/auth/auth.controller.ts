@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import {
   loginInputSchema,
   registerInputSchema,
@@ -16,6 +17,10 @@ import {
   type PublicUser,
   type RegisterInput,
 } from '@bdph/types';
+
+// Credential endpoints are brute-force targets, so they get a far tighter budget
+// than the global default: 10 attempts per minute per IP.
+const AUTH_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from './current-user.decorator';
 import { LocalAuthProvider } from './local-auth.provider';
@@ -43,6 +48,7 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(201)
+  @Throttle(AUTH_THROTTLE)
   async register(
     @Body(new ZodValidationPipe(registerInputSchema)) body: RegisterInput,
     @Req() req: Request,
@@ -55,6 +61,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
   async login(
     @Body(new ZodValidationPipe(loginInputSchema)) body: LoginInput,
     @Req() req: Request,
