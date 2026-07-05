@@ -27,6 +27,14 @@ const envSchema = z
     // Optional: listing photo uploads are disabled (routes 503) until this is set.
     // Form: cloudinary://<api_key>:<api_secret>@<cloud_name>
     CLOUDINARY_URL: z.string().optional(),
+    // Base URL of the web app, used to build the verify-email / reset-password
+    // links sent by email. Locale is appended per-user. Validated as a URL so a
+    // misconfigured value fails fast at boot instead of producing broken links.
+    APP_BASE_URL: z.string().url().default('http://localhost:3000'),
+    // Transactional email (Resend). Optional: when unset, emails are logged in
+    // dev and dropped in production instead of sent.
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().default('BD Property Hub <no-reply@bdpropertyhub.test>'),
   })
   .passthrough();
 

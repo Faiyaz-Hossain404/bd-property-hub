@@ -164,6 +164,26 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
+// --- Email verification & password reset -------------------------------------
+// verify/reset return the API's generic { success } body. resend/forgot always
+// resolve regardless of whether the email maps to an account (no enumeration).
+
+export function verifyEmail(token: string): Promise<{ success: true }> {
+  return postJson<{ success: true }>('/auth/verify-email', { token });
+}
+
+export function resendVerification(email: string): Promise<{ success: true }> {
+  return postJson<{ success: true }>('/auth/resend-verification', { email });
+}
+
+export function requestPasswordReset(email: string): Promise<{ success: true }> {
+  return postJson<{ success: true }>('/auth/forgot-password', { email });
+}
+
+export function resetPassword(token: string, password: string): Promise<{ success: true }> {
+  return postJson<{ success: true }>('/auth/reset-password', { token, password });
+}
+
 export function becomeSeller(): Promise<PublicUser> {
   return postJson<PublicUser>('/me/become-seller', {});
 }

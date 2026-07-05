@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import type { Locale, PublicUser, Role } from '@bdph/types';
 import { User, UserDocument } from './schemas/user.schema';
 
@@ -33,8 +33,39 @@ export class UsersService {
     return this.userModel.findOne({ email: email.toLowerCase() }).select('+passwordHash').exec();
   }
 
+  // Default projection (no passwordHash) — for lookups that don't need the secret,
+  // e.g. resending a verification email.
+  findByEmail(email: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  }
+
   findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
+  }
+
+  // Mark the address verified and, if the account was only pending verification,
+  // activate it. Never downgrades an already-active/suspended/deleted status.
+  async markEmailVerified(userId: string): Promise<void> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    user.emailVerified = true;
+    if (user.status === 'pending_verification') {
+      user.status = 'active';
+    }
+    await user.save();
+  }
+
+  // Replace the first-party password hash (used by password reset). Callers hash
+  // the plaintext with PasswordService before calling.
+  async setPasswordHash(userId: string, passwordHash: string): Promise<void> {
+    const result = await this.userModel
+      .updateOne({ _id: new Types.ObjectId(userId) }, { $set: { passwordHash } })
+      .exec();
+    if (result.matchedCount === 0) {
+      throw new NotFoundException('User not found');
+    }
   }
 
   async addRole(userId: string, role: Role): Promise<UserDocument> {
