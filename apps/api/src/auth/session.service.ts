@@ -54,4 +54,13 @@ export class SessionService {
       { $set: { revokedAt: new Date() } },
     );
   }
+
+  // Revoke every active session for a user — used after a password reset so any
+  // session (including an attacker's) is invalidated when the password changes.
+  async revokeAllForUser(userId: string): Promise<void> {
+    await this.sessionModel.updateMany(
+      { userId: new Types.ObjectId(userId), revokedAt: null },
+      { $set: { revokedAt: new Date() } },
+    );
+  }
 }

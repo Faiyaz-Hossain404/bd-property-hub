@@ -450,3 +450,34 @@ export const loginInputSchema = z.object({
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginInputSchema>;
+
+// --- Email verification & password reset -------------------------------------
+// Opaque tokens are delivered by email; the client only echoes them back. A
+// non-empty string is all the boundary can assert — the API validates the token
+// against its store (hash match, purpose, single-use, not expired).
+export const verifyEmailInputSchema = z.object({
+  token: z.string().min(1).max(512),
+});
+export type VerifyEmailInput = z.infer<typeof verifyEmailInputSchema>;
+
+// Request a fresh verification email. Kept separate from login so an unverified
+// user can re-trigger it. The response is always generic (no account enumeration).
+export const resendVerificationInputSchema = z.object({
+  email: z.string().email(),
+});
+export type ResendVerificationInput = z.infer<typeof resendVerificationInputSchema>;
+
+// Start a password reset. Always answered generically regardless of whether the
+// email maps to an account (no enumeration).
+export const requestPasswordResetInputSchema = z.object({
+  email: z.string().email(),
+});
+export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetInputSchema>;
+
+// Complete a password reset with the emailed token and a new password (same
+// strength rule as registration).
+export const resetPasswordInputSchema = z.object({
+  token: z.string().min(1).max(512),
+  password: z.string().min(8).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;

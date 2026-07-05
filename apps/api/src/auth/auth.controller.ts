@@ -13,19 +13,28 @@ import { Throttle } from '@nestjs/throttler';
 import {
   loginInputSchema,
   registerInputSchema,
+  requestPasswordResetInputSchema,
+  resendVerificationInputSchema,
+  resetPasswordInputSchema,
+  verifyEmailInputSchema,
   type LoginInput,
   type PublicUser,
   type RegisterInput,
+  type RequestPasswordResetInput,
+  type ResendVerificationInput,
+  type ResetPasswordInput,
+  type VerifyEmailInput,
 } from '@bdph/types';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { CurrentUser } from './current-user.decorator';
+import { LocalAuthProvider } from './local-auth.provider';
+import { AccountFlowsService } from './account-flows.service';
+import { SESSION_COOKIE, SessionService } from './session.service';
+import { SessionAuthGuard } from './session-auth.guard';
 
 // Credential endpoints are brute-force targets, so they get a far tighter budget
 // than the global default: 10 attempts per minute per IP.
 const AUTH_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { CurrentUser } from './current-user.decorator';
-import { LocalAuthProvider } from './local-auth.provider';
-import { SESSION_COOKIE, SessionService } from './session.service';
-import { SessionAuthGuard } from './session-auth.guard';
 
 function sessionCookieOptions(maxAgeSeconds?: number): CookieOptions {
   return {
@@ -44,6 +53,7 @@ export class AuthController {
   constructor(
     private readonly local: LocalAuthProvider,
     private readonly sessions: SessionService,
+    private readonly accounts: AccountFlowsService,
   ) {}
 
   @Post('register')
@@ -55,6 +65,9 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<PublicUser> {
     const user = await this.local.register(body);
+    // Send the verification email (best-effort inside the service). The user is
+    // signed in immediately either way; verification can be completed later.
+    await this.accounts.sendVerificationEmail(user.id, user.email, user.name, user.locale);
     await this.startSession(user, req, res);
     return user;
   }
@@ -90,6 +103,54 @@ export class AuthController {
       await this.sessions.revoke(token);
     }
     res.clearCookie(SESSION_COOKIE, sessionCookieOptions());
+    return { success: true };
+  }
+
+  // Confirm an email address from the emailed link. The token is the credential,
+  // so this is public (the clicker may be signed out or on another device).
+  @Post('verify-email')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  async verifyEmail(
+    @Body(new ZodValidationPipe(verifyEmailInputSchema)) body: VerifyEmailInput,
+  ): Promise<{ success: true }> {
+    await this.accounts.verifyEmail(body.token);
+    return { success: true };
+  }
+
+  // Re-send a verification email. Always 202 with a generic body regardless of
+  // whether the email exists or is already verified (no account enumeration).
+  @Post('resend-verification')
+  @HttpCode(202)
+  @Throttle(AUTH_THROTTLE)
+  async resendVerification(
+    @Body(new ZodValidationPipe(resendVerificationInputSchema)) body: ResendVerificationInput,
+  ): Promise<{ success: true }> {
+    await this.accounts.resendVerification(body.email);
+    return { success: true };
+  }
+
+  // Start a password reset. Always 202/generic (no enumeration); only sends mail
+  // when a first-party account exists for the email.
+  @Post('forgot-password')
+  @HttpCode(202)
+  @Throttle(AUTH_THROTTLE)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(requestPasswordResetInputSchema)) body: RequestPasswordResetInput,
+  ): Promise<{ success: true }> {
+    await this.accounts.requestPasswordReset(body.email);
+    return { success: true };
+  }
+
+  // Complete a password reset with the emailed token + new password. Consuming the
+  // token also revokes all existing sessions for that user.
+  @Post('reset-password')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordInputSchema)) body: ResetPasswordInput,
+  ): Promise<{ success: true }> {
+    await this.accounts.resetPassword(body.token, body.password);
     return { success: true };
   }
 
