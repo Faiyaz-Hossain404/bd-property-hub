@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ListingsModule } from './listings/listings.module';
 import { SavedListingsModule } from './saved/saved-listings.module';
+import { SellerVerificationModule } from './seller-verification/seller-verification.module';
 import { GeoModule } from './geo/geo.module';
 
 @Module({
@@ -69,6 +70,7 @@ import { GeoModule } from './geo/geo.module';
     AuthModule,
     ListingsModule,
     SavedListingsModule,
+    SellerVerificationModule,
     GeoModule,
   ],
   // Apply the rate limiter to every route by default. Individual routes opt out

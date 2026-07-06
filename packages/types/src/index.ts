@@ -430,6 +430,25 @@ export interface ApiError {
 export const USER_STATUSES = ['active', 'suspended', 'pending_verification', 'deleted'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
+// --- Seller verification (KYC) ----------------------------------------------
+// A seller must be verified before any of their listings can be submitted for
+// review and made public (FR-S7/FR-S8). This is the verification *status* gate;
+// uploading and reviewing the actual NID / TAX-land documents is a separate,
+// later increment. Lifecycle: unverified → (seller requests) → pending →
+// (admin decides) → verified | rejected; a rejected seller may request again.
+export const SELLER_KYC_STATUSES = ['unverified', 'pending', 'verified', 'rejected'] as const;
+export type SellerKycStatus = (typeof SELLER_KYC_STATUSES)[number];
+
+// The seller verification gate (FR-S8): a listing can only be submitted for
+// review once its owner is verified. Shared by the API (authoritative check in
+// submitForReview) and the web dashboard (mirrors it to disable Submit with a
+// hint), so it lives here beside listingCompletenessGaps — one definition, both
+// sides. Staff (admin/super_admin) don't list properties in practice, but if they
+// own a listing the same rule applies; there is no seller-role carve-out here.
+export function canSubmitListings(kycStatus: SellerKycStatus): boolean {
+  return kycStatus === 'verified';
+}
+
 // Both providers resolve to one canonical user; this names which one was used.
 export const AUTH_PROVIDERS = ['local', 'clerk'] as const;
 export type AuthProviderKind = (typeof AUTH_PROVIDERS)[number];
@@ -443,6 +462,10 @@ export interface PublicUser {
   phone: string | null;
   roles: Role[];
   status: UserStatus;
+  // Seller verification gate (FR-S8). 'unverified' for buyers who never applied.
+  kycStatus: SellerKycStatus;
+  // Admin's note on the latest rejection, shown to the seller; null otherwise.
+  kycReason: string | null;
   locale: Locale;
   hasPassword: boolean;
   hasClerkLink: boolean;
@@ -463,6 +486,13 @@ export const loginInputSchema = z.object({
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginInputSchema>;
+
+// Admin's reason when rejecting a seller's verification request (shown to the
+// seller so they know what to fix before requesting again).
+export const rejectSellerVerificationInputSchema = z.object({
+  reason: z.string().min(1).max(1000),
+});
+export type RejectSellerVerificationInput = z.infer<typeof rejectSellerVerificationInputSchema>;
 
 // --- Email verification & password reset -------------------------------------
 // Opaque tokens are delivered by email; the client only echoes them back. A

@@ -88,6 +88,9 @@ export class UsersService {
       phone: user.phone,
       roles: user.roles,
       status: user.status,
+      // Coalesce so users created before this field default to 'unverified'.
+      kycStatus: user.kycStatus ?? 'unverified',
+      kycReason: user.kycReason ?? null,
       locale: user.locale,
       hasPassword: Boolean(user.passwordHash),
       hasClerkLink: Boolean(user.clerkUserId),

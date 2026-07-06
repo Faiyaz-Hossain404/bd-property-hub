@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 import { GeoModule } from '../geo/geo.module';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -15,6 +16,7 @@ import { ListingsService } from './listings.service';
 @Module({
   imports: [
     AuthModule,
+    UsersModule,
     GeoModule,
     CloudinaryModule,
     MongooseModule.forFeature([
