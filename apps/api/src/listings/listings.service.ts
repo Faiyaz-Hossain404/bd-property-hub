@@ -27,6 +27,7 @@ import {
   listingCompletenessGaps,
 } from '@bdph/types';
 import { escapeRegExp } from './listing-search.util';
+import { canReinstateFrom, canTakeDownFrom, isStaffLocked } from './listing-moderation';
 import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
@@ -80,6 +81,12 @@ export class ListingsService {
 
   findPendingQueue(): Promise<ListingDocument[]> {
     return this.listingModel.find({ publicationStatus: 'pending_review' }).sort({ createdAt: 1 }).exec();
+  }
+
+  // Listings staff have taken down (MOD-3), most recently removed first. Backs the
+  // admin "removed listings" surface, where a takedown can be reviewed or reinstated.
+  findRemovedQueue(): Promise<ListingDocument[]> {
+    return this.listingModel.find({ publicationStatus: 'removed' }).sort({ updatedAt: -1 }).exec();
   }
 
   findById(listingId: string): Promise<ListingDocument> {
@@ -233,6 +240,9 @@ export class ListingsService {
   // there is no "clear this field" sentinel yet.
   async update(ownerId: string, listingId: string, input: UpdateListingInput): Promise<ListingDocument> {
     const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    if (isStaffLocked(listing.publicationStatus)) {
+      throw new ConflictException('This listing was removed by staff and can no longer be changed');
+    }
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
       throw new ConflictException(`Cannot edit a listing in status "${listing.publicationStatus}"`);
     }
@@ -285,6 +295,12 @@ export class ListingsService {
     if (listing.publicationStatus === 'archived') {
       throw new ConflictException('Listing is already archived');
     }
+    // A listing staff removed (MOD-3) is frozen: the owner can't withdraw it,
+    // which would otherwise archive it and let restore() bounce it back into the
+    // submit → review flow, undoing the takedown.
+    if (isStaffLocked(listing.publicationStatus)) {
+      throw new ConflictException('This listing was removed by staff and can no longer be changed');
+    }
     return this.transitionStatus(listing, 'archived', ownerId, null);
   }
 
@@ -309,6 +325,9 @@ export class ListingsService {
   // the check here still holds if that UI is bypassed.
   async submitForReview(ownerId: string, listingId: string): Promise<ListingDocument> {
     const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    if (isStaffLocked(listing.publicationStatus)) {
+      throw new ConflictException('This listing was removed by staff and can no longer be changed');
+    }
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
       throw new ConflictException(`Cannot submit a listing in status "${listing.publicationStatus}"`);
     }
@@ -336,6 +355,30 @@ export class ListingsService {
       throw new ConflictException(`Cannot reject a listing in status "${listing.publicationStatus}"`);
     }
     return this.transitionStatus(listing, 'rejected', actorId, reason);
+  }
+
+  // Admin/super-admin taking a live listing down (MOD-3) — e.g. it turns out to
+  // break the rules after it was approved. Only an `approved` listing is live, so
+  // that's the only status this applies to. The takedown drops it from the public
+  // catalog immediately (reads serve only `approved`) and records the actor and
+  // reason in the same status-history audit trail as every other transition.
+  async takedown(actorId: string, listingId: string, reason: string): Promise<ListingDocument> {
+    const listing = await this.findOrThrow(listingId);
+    if (!canTakeDownFrom(listing.publicationStatus)) {
+      throw new ConflictException(`Cannot take down a listing in status "${listing.publicationStatus}"`);
+    }
+    return this.transitionStatus(listing, 'removed', actorId, reason);
+  }
+
+  // Admin/super-admin reinstating a listing they previously removed (MOD-3), for a
+  // takedown made in error. It returns to `approved` — straight back into the
+  // public catalog — since it had already passed review before being removed.
+  async reinstate(actorId: string, listingId: string): Promise<ListingDocument> {
+    const listing = await this.findOrThrow(listingId);
+    if (!canReinstateFrom(listing.publicationStatus)) {
+      throw new ConflictException(`Cannot reinstate a listing in status "${listing.publicationStatus}"`);
+    }
+    return this.transitionStatus(listing, 'approved', actorId, null);
   }
 
   toPublic(listing: ListingDocument): PublicListing {
@@ -598,6 +641,12 @@ export class ListingsService {
   }
 
   private assertEditable(listing: ListingDocument): void {
+    // Explicit staff-lock first (MOD-3): a removed listing is frozen for the owner
+    // regardless of what RESUBMITTABLE_STATUSES contains, so a future change to that
+    // list can't silently reopen a taken-down listing to edits/media/resubmission.
+    if (isStaffLocked(listing.publicationStatus)) {
+      throw new ConflictException('This listing was removed by staff and can no longer be changed');
+    }
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
       throw new ConflictException(`Cannot edit a listing in status "${listing.publicationStatus}"`);
     }

@@ -181,7 +181,8 @@
         "pending_review": "Pending review",
         "approved": "Approved",
         "rejected": "Rejected",
-        "archived": "Archived"
+        "archived": "Archived",
+        "removed": "Removed by staff"
       },
       "photos": {
         "title": "Photos",
@@ -242,6 +243,11 @@
       "approveError": "Couldn't approve the listing. Please try again.",
       "rejectCta": "Reject",
       "rejectError": "Couldn't reject the listing. Please try again.",
+      "removedTitle": "Removed listings",
+      "removedDescription": "Listings staff have taken down. Reinstate one to return it to the public catalog.",
+      "removedEmpty": "No listings have been removed.",
+      "reinstateCta": "Reinstate",
+      "reinstateError": "Couldn't reinstate the listing. Please try again.",
       "assetTypes": {
         "apartment": "Apartment",
         "land": "Land",
@@ -304,6 +310,17 @@
     "perMonth": "/mo",
     "perYear": "/yr",
     "groupPurchase": "Co-ownership",
+    "admin": {
+      "panelTitle": "Staff moderation",
+      "panelDescription": "Remove this listing from the public catalog if it breaks the rules. You can reinstate it later from the moderation dashboard.",
+      "takedownCta": "Remove listing",
+      "reasonPlaceholder": "Reason for removal",
+      "reasonRequired": "Please enter a reason for removal.",
+      "confirmCta": "Confirm removal",
+      "cancelCta": "Cancel",
+      "takedownError": "Couldn't remove the listing. Please try again.",
+      "removedConfirmation": "This listing has been removed from the public catalog."
+    },
     "save": {
       "save": "Save",
       "saved": "Saved",

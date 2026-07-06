@@ -1,5 +1,12 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { rejectListingInputSchema, type PublicListing, type PublicUser, type RejectListingInput } from '@bdph/types';
+import {
+  rejectListingInputSchema,
+  takedownListingInputSchema,
+  type PublicListing,
+  type PublicUser,
+  type RejectListingInput,
+  type TakedownListingInput,
+} from '@bdph/types';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
@@ -21,6 +28,13 @@ export class ModerationController {
     return listings.map((listing) => this.listings.toPublic(listing));
   }
 
+  // Listings staff have taken down — the surface for reviewing/reinstating them.
+  @Get('removed')
+  async removed(): Promise<PublicListing[]> {
+    const listings = await this.listings.findRemovedQueue();
+    return listings.map((listing) => this.listings.toPublic(listing));
+  }
+
   @Post(':caseId/approve')
   async approve(@Param('caseId') caseId: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.approve(user.id, caseId);
@@ -34,6 +48,24 @@ export class ModerationController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.reject(user.id, caseId, body.reason);
+    return this.listings.toPublic(listing);
+  }
+
+  // Take a live listing down (MOD-3). Requires a reason for the audit trail.
+  @Post(':caseId/takedown')
+  async takedown(
+    @Param('caseId') caseId: string,
+    @Body(new ZodValidationPipe(takedownListingInputSchema)) body: TakedownListingInput,
+    @CurrentUser() user: PublicUser,
+  ): Promise<PublicListing> {
+    const listing = await this.listings.takedown(user.id, caseId, body.reason);
+    return this.listings.toPublic(listing);
+  }
+
+  // Undo a takedown — return the listing to the public catalog (MOD-3).
+  @Post(':caseId/reinstate')
+  async reinstate(@Param('caseId') caseId: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
+    const listing = await this.listings.reinstate(user.id, caseId);
     return this.listings.toPublic(listing);
   }
 }

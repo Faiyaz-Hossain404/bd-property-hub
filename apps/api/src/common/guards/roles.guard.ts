@@ -10,7 +10,15 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const required = this.reflector.get<Role[]>(ROLES_KEY, context.getHandler());
+    // Read @Roles from BOTH the method and the controller class: a method-level
+    // decorator overrides a class-level one, and a class-level @Roles applies to
+    // every route in the controller. Using getHandler() alone silently ignored
+    // class-level @Roles (e.g. ModerationController), leaving those routes gated
+    // by SessionAuthGuard only — any authenticated user could reach them.
+    const required = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
     if (!required || required.length === 0) return true;
 
     const { user } = context.switchToHttp().getRequest<{ user?: PublicUser }>();

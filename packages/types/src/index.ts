@@ -17,12 +17,17 @@ export const moneySchema = z.object({
 export type Money = z.infer<typeof moneySchema>;
 
 // --- Listing state machine ---------------------------------------------------
+// `removed` is a staff takedown of an already-live (`approved`) listing (MOD-3):
+// distinct from `rejected` (never went live; the seller can fix and resubmit) and
+// `archived` (the seller hid their own listing and can restore it). A removed
+// listing leaves the public catalog and only staff can reinstate it.
 export const LISTING_PUBLICATION_STATUSES = [
   'draft',
   'pending_review',
   'approved',
   'rejected',
   'archived',
+  'removed',
 ] as const;
 export type ListingPublicationStatus = (typeof LISTING_PUBLICATION_STATUSES)[number];
 
@@ -225,6 +230,14 @@ export const rejectListingInputSchema = z.object({
   reason: z.string().min(1).max(1000),
 });
 export type RejectListingInput = z.infer<typeof rejectListingInputSchema>;
+
+// Boundary input for POST /admin/moderation/:caseId/takedown (MOD-3). A reason is
+// required — a takedown is an enforcement action, so the audit trail must record
+// why the listing was pulled from the public catalog.
+export const takedownListingInputSchema = z.object({
+  reason: z.string().min(1).max(1000),
+});
+export type TakedownListingInput = z.infer<typeof takedownListingInputSchema>;
 
 // Query params for GET /listings (public catalog browse, API_DESIGN.md §5).
 // `district_id` is the first DISC-3 filter facet (the required-selector Zilla);

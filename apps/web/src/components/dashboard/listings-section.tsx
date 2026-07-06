@@ -41,7 +41,7 @@ type Props = { user: PublicUser; onUserRefresh: () => void }
 
 function statusVariant(status: ListingPublicationStatus): "default" | "outline" | "destructive" | "secondary" {
   if (status === "approved") return "default"
-  if (status === "rejected" || status === "archived") return "destructive"
+  if (status === "rejected" || status === "archived" || status === "removed") return "destructive"
   if (status === "pending_review") return "secondary"
   return "outline"
 }
