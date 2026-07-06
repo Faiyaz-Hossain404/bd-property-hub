@@ -14,6 +14,7 @@ import type {
   PublicUser,
   RegisterInput,
   RejectListingInput,
+  TakedownListingInput,
   TransactionType,
   UpdateListingInput,
 } from '@bdph/types';
@@ -335,4 +336,17 @@ export function approveListing(caseId: string): Promise<PublicListing> {
 
 export function rejectListing(caseId: string, input: RejectListingInput): Promise<PublicListing> {
   return postJson<PublicListing>(`/admin/moderation/${caseId}/reject`, input);
+}
+
+// Listings staff have taken down (MOD-3) — backs the "removed listings" card.
+export function getRemovedListings(): Promise<PublicListing[]> {
+  return getJson<PublicListing[]>('/admin/moderation/removed');
+}
+
+export function takedownListing(caseId: string, input: TakedownListingInput): Promise<PublicListing> {
+  return postJson<PublicListing>(`/admin/moderation/${caseId}/takedown`, input);
+}
+
+export function reinstateListing(caseId: string): Promise<PublicListing> {
+  return postJson<PublicListing>(`/admin/moderation/${caseId}/reinstate`, {});
 }

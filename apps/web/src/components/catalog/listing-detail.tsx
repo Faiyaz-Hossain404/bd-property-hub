@@ -19,6 +19,7 @@ import {
 } from "@/lib/listing-display"
 import { ListingGallery } from "./listing-gallery"
 import { SaveListingButton } from "./save-listing-button"
+import { ListingModerationControls } from "./listing-moderation-controls"
 
 type State =
   | { status: "loading" }
@@ -181,6 +182,11 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
           </p>
         </div>
       ) : null}
+
+      {/* Staff-only takedown panel (MOD-3). Renders nothing for buyers. */}
+      <div className="max-w-3xl">
+        <ListingModerationControls listingId={listing.id} />
+      </div>
     </div>
   )
 }
