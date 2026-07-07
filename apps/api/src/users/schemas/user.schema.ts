@@ -2,10 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import {
   ROLES,
+  SELLER_KYC_STATUSES,
   SUPPORTED_LOCALES,
   USER_STATUSES,
   type Locale,
   type Role,
+  type SellerKycStatus,
   type UserStatus,
 } from '@bdph/types';
 
@@ -45,6 +47,17 @@ export class User {
 
   @Prop({ type: String, enum: USER_STATUSES, default: 'pending_verification' })
   status!: UserStatus;
+
+  // Seller verification gate (FR-S8). Indexed so the admin queue can list
+  // `pending` sellers cheaply. Defaults to 'unverified'; a listing can't be
+  // submitted for review until its owner is 'verified'.
+  @Prop({ type: String, enum: SELLER_KYC_STATUSES, default: 'unverified', index: true })
+  kycStatus!: SellerKycStatus;
+
+  // Admin's note on the most recent rejection, surfaced to the seller. Null
+  // unless the last decision was a rejection.
+  @Prop({ type: String, default: null })
+  kycReason!: string | null;
 
   @Prop({ type: String, enum: SUPPORTED_LOCALES, default: 'en' })
   locale!: Locale;

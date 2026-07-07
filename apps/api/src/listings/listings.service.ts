@@ -24,8 +24,10 @@ import {
   LISTING_IMAGE_FORMATS,
   MAX_LISTING_IMAGE_BYTES,
   MAX_LISTING_PHOTOS,
+  canSubmitListings,
   listingCompletenessGaps,
 } from '@bdph/types';
+import { UsersService } from '../users/users.service';
 import { escapeRegExp } from './listing-search.util';
 import { canReinstateFrom, canTakeDownFrom, isStaffLocked } from './listing-moderation';
 import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
@@ -51,6 +53,7 @@ export class ListingsService {
     @InjectConnection() private readonly connection: Connection,
     private readonly geo: GeoService,
     private readonly cloudinary: CloudinaryService,
+    private readonly users: UsersService,
   ) {}
 
   async createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
@@ -330,6 +333,15 @@ export class ListingsService {
     }
     if (!RESUBMITTABLE_STATUSES.includes(listing.publicationStatus)) {
       throw new ConflictException(`Cannot submit a listing in status "${listing.publicationStatus}"`);
+    }
+    // Seller verification gate (FR-S8): nothing goes to the moderation queue (and
+    // so nothing goes public) until the owner is verified. `ownerId` is the
+    // authenticated caller — findOwnedOrThrow already proved they own the listing —
+    // so this checks the right person. The web mirrors this to disable Submit, but
+    // this is the authoritative check.
+    const owner = await this.users.findById(ownerId);
+    if (!owner || !canSubmitListings(owner.kycStatus)) {
+      throw new ForbiddenException('Complete seller verification before submitting a listing for review');
     }
     const gaps = listingCompletenessGaps(listing);
     if (gaps.length > 0) {

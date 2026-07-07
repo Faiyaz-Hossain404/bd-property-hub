@@ -110,6 +110,7 @@
       "submitting": "Submitting…",
       "submitError": "Couldn't submit the listing. Please try again.",
       "submitIncomplete": "Add a {missing} before you can submit this listing.",
+      "submitNeedsVerification": "Complete seller verification before you can submit listings for review.",
       "requirementSeparator": " and ",
       "requirements": {
         "location": "location"
@@ -229,6 +230,33 @@
       "view": "View",
       "remove": "Remove",
       "removeError": "Couldn't remove this property. Please try again."
+    },
+    "verification": {
+      "sectionTitle": "Seller verification",
+      "cardTitle": "Verify your seller account",
+      "cardDescription": "Get verified before your listings can be submitted for review and go public.",
+      "unverified": "You're not verified yet. Request verification to start publishing listings.",
+      "pending": "Your verification request is under review. We'll update this once it's decided.",
+      "verified": "Your seller account is verified — you can submit listings for review.",
+      "rejected": "Your verification was not approved.",
+      "reason": "Reason: {reason}",
+      "requestCta": "Request verification",
+      "requestAgainCta": "Request again",
+      "requestError": "Couldn't send your request. Please try again."
+    },
+    "verificationQueue": {
+      "sectionTitle": "Seller verification",
+      "queueTitle": "Sellers waiting for verification",
+      "queueDescription": "Approve or reject sellers who have requested verification.",
+      "loading": "Loading the queue…",
+      "loadError": "Couldn't load the queue.",
+      "empty": "No sellers are waiting for verification.",
+      "reasonPlaceholder": "Reason for rejection",
+      "reasonRequired": "Please enter a reason to reject.",
+      "approveCta": "Approve",
+      "approveError": "Couldn't approve the seller. Please try again.",
+      "rejectCta": "Reject",
+      "rejectError": "Couldn't reject the seller. Please try again."
     },
     "moderation": {
       "sectionTitle": "Moderation",

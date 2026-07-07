@@ -14,6 +14,7 @@ import type {
   PublicUser,
   RegisterInput,
   RejectListingInput,
+  RejectSellerVerificationInput,
   TakedownListingInput,
   TransactionType,
   UpdateListingInput,
@@ -349,4 +350,26 @@ export function takedownListing(caseId: string, input: TakedownListingInput): Pr
 
 export function reinstateListing(caseId: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/admin/moderation/${caseId}/reinstate`, {});
+}
+
+// --- Seller verification (KYC gate, FR-S8) ----------------------------------
+// Seller asks to be verified so their listings can be submitted for review.
+export function requestSellerVerification(): Promise<PublicUser> {
+  return postJson<PublicUser>('/me/verification/request', {});
+}
+
+// Sellers waiting for a verification decision — the admin review queue.
+export function getSellerVerificationQueue(): Promise<PublicUser[]> {
+  return getJson<PublicUser[]>('/admin/seller-verification/queue');
+}
+
+export function approveSellerVerification(userId: string): Promise<PublicUser> {
+  return postJson<PublicUser>(`/admin/seller-verification/${userId}/approve`, {});
+}
+
+export function rejectSellerVerification(
+  userId: string,
+  input: RejectSellerVerificationInput,
+): Promise<PublicUser> {
+  return postJson<PublicUser>(`/admin/seller-verification/${userId}/reject`, input);
 }

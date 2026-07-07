@@ -7,6 +7,7 @@ import { Eye, LoaderCircle } from "lucide-react"
 import {
   ASSET_TYPES,
   TRANSACTION_TYPES,
+  canSubmitListings,
   listingCompletenessGaps,
   type AssetType,
   type ListingPublicationStatus,
@@ -51,12 +52,15 @@ export function ListingsSection({ user, onUserRefresh }: Props) {
   const isSeller = user.roles.some((role) =>
     SELLER_ROLES.includes(role as (typeof SELLER_ROLES)[number]),
   )
+  // Mirrors the server's submit gate (FR-S8) so Submit is disabled with a hint
+  // rather than failing the click; the API still enforces it.
+  const kycVerified = canSubmitListings(user.kycStatus)
 
   return (
     <div className="mt-10 max-w-2xl">
       <h2 className="font-heading text-xl font-semibold text-foreground">{t("sectionTitle")}</h2>
       {isSeller ? (
-        <DraftWorkspace t={t} />
+        <DraftWorkspace t={t} kycVerified={kycVerified} />
       ) : (
         <BecomeSellerCard onUserRefresh={onUserRefresh} t={t} />
       )}
@@ -101,7 +105,7 @@ function BecomeSellerCard({ onUserRefresh, t }: { onUserRefresh: () => void; t: 
   )
 }
 
-function DraftWorkspace({ t }: { t: SectionT }) {
+function DraftWorkspace({ t, kycVerified }: { t: SectionT; kycVerified: boolean }) {
   const [listings, setListings] = useState<PublicListing[] | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [titleEn, setTitleEn] = useState("")
@@ -229,6 +233,7 @@ function DraftWorkspace({ t }: { t: SectionT }) {
             <ListingRow
               key={listing.id}
               listing={listing}
+              kycVerified={kycVerified}
               onUpdated={(updated) =>
                 setListings((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? null)
               }
@@ -243,10 +248,12 @@ function DraftWorkspace({ t }: { t: SectionT }) {
 
 function ListingRow({
   listing,
+  kycVerified,
   onUpdated,
   t,
 }: {
   listing: PublicListing
+  kycVerified: boolean
   onUpdated: (updated: PublicListing) => void
   t: SectionT
 }) {
@@ -303,7 +310,7 @@ function ListingRow({
               size="sm"
               variant="outline"
               onClick={handleSubmit}
-              disabled={isPending || gaps.length > 0}
+              disabled={isPending || gaps.length > 0 || !kycVerified}
             >
               {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {isPending ? t("submitting") : t("submitCta")}
@@ -319,7 +326,9 @@ function ListingRow({
           ) : null}
         </div>
       </div>
-      {canSubmit && gaps.length > 0 ? (
+      {canSubmit && !kycVerified ? (
+        <p className="text-xs text-muted-foreground">{t("submitNeedsVerification")}</p>
+      ) : canSubmit && gaps.length > 0 ? (
         <p className="text-xs text-muted-foreground">{t("submitIncomplete", { missing: missingLabel })}</p>
       ) : null}
       {error ? (

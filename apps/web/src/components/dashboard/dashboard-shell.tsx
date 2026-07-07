@@ -19,8 +19,11 @@ import { LogoutButton } from "@/components/dashboard/logout-button"
 import { ListingsSection } from "@/components/dashboard/listings-section"
 import { SavedSection } from "@/components/dashboard/saved-section"
 import { ModerationSection } from "@/components/dashboard/moderation-section"
+import { SellerVerificationSection } from "@/components/dashboard/seller-verification-section"
+import { SellerVerificationQueue } from "@/components/dashboard/seller-verification-queue"
 
 const MODERATOR_ROLES = ["admin", "super_admin"] as const
+const SELLER_ROLE = "seller"
 
 type Props = { user: PublicUser; onUserRefresh: () => void }
 
@@ -46,6 +49,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
   const isModerator = user.roles.some((role) =>
     MODERATOR_ROLES.includes(role as (typeof MODERATOR_ROLES)[number]),
   )
+  const isSeller = user.roles.includes(SELLER_ROLE)
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,9 +112,13 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
             </CardContent>
           </Card>
 
+          {isSeller ? (
+            <SellerVerificationSection user={user} onUserRefresh={onUserRefresh} />
+          ) : null}
           <ListingsSection user={user} onUserRefresh={onUserRefresh} />
           <SavedSection />
           {isModerator ? <ModerationSection /> : null}
+          {isModerator ? <SellerVerificationQueue /> : null}
         </div>
       </main>
     </div>
