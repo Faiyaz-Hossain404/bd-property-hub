@@ -65,5 +65,13 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-// Sparse so multiple null clerkUserId values coexist; unique once a link exists.
-UserSchema.index({ clerkUserId: 1 }, { unique: true, sparse: true });
+// Enforce Clerk-link uniqueness only among users that actually have a link. A
+// partial index is required rather than a sparse one: clerkUserId defaults to an
+// explicit null, and a sparse index still indexes present-but-null fields — so it
+// would reject the second password-only user (both have clerkUserId: null). The
+// partial filter scopes the unique constraint to string values, leaving any number
+// of null (password-only) users free to coexist.
+UserSchema.index(
+  { clerkUserId: 1 },
+  { unique: true, partialFilterExpression: { clerkUserId: { $type: 'string' } } },
+);

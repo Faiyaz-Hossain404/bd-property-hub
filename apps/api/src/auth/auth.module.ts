@@ -31,6 +31,10 @@ import { AuthToken, AuthTokenSchema } from './schemas/auth-token.schema';
     AuthTokenService,
     AccountFlowsService,
   ],
-  exports: [SessionAuthGuard],
+  // SessionAuthGuard is used via @UseGuards in other modules' controllers
+  // (listings, seller-verification, saved). Those modules import AuthModule, so
+  // both the guard AND its dependency (SessionService) must be exported for Nest
+  // to construct the guard in the importing module's context.
+  exports: [SessionAuthGuard, SessionService],
 })
 export class AuthModule {}
