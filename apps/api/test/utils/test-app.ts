@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import request from 'supertest';
 import type { Connection } from 'mongoose';
-import type { PublicListing, PublicUser, Role } from '@bdph/types';
+import type { ListingLocationInput, PublicListing, PublicUser, Role } from '@bdph/types';
 
 import { ResponseEnvelopeInterceptor } from '../../src/common/interceptors/response-envelope.interceptor';
 import { AllExceptionsFilter } from '../../src/common/filters/all-exceptions.filter';
@@ -102,7 +102,15 @@ export async function stopTestApp(ctx: TestContext): Promise<void> {
 // Clears mutable collections between tests while keeping the seeded geo taxonomy,
 // so each test starts from a clean, isolated state.
 export async function resetData(ctx: TestContext): Promise<void> {
-  const keep = new Set(['divisions', 'districts']);
+  // Keep every seeded geo reference collection — they're seeded once in
+  // startTestApp and shared across tests, not per-test mutable state.
+  const keep = new Set([
+    'divisions',
+    'districts',
+    'citiesUpazilas',
+    'areasThanas',
+    'cityCorporations',
+  ]);
   for (const [name, collection] of Object.entries(ctx.connection.collections)) {
     if (!keep.has(name)) {
       await collection.deleteMany({});
@@ -150,6 +158,31 @@ export async function firstDistrictId(ctx: TestContext): Promise<string> {
   return first.id;
 }
 
+// Returns the first N cities/upazilas seeded under a district — enough to pick one
+// (or two, for a drill-down test) without hard-coding ids.
+export async function citiesUpazilasIn(ctx: TestContext, districtId: string): Promise<string[]> {
+  const rows = await ctx.app.get(GeoService).listCitiesUpazilas(districtId);
+  return rows.map((row) => row.id);
+}
+
+export async function firstAreaThanaId(ctx: TestContext, cityUpazilaId: string): Promise<string> {
+  const rows = await ctx.app.get(GeoService).listAreasThanas(cityUpazilaId);
+  const first = rows[0];
+  if (!first) {
+    throw new Error('geo seed produced no areas/thanas for the city/upazila');
+  }
+  return first.id;
+}
+
+export async function firstCityCorporationId(ctx: TestContext): Promise<string> {
+  const rows = await ctx.app.get(GeoService).listCityCorporations();
+  const first = rows[0];
+  if (!first) {
+    throw new Error('geo seed produced no city corporations');
+  }
+  return first.id;
+}
+
 // A seller who has passed verification (KYC) and can therefore submit listings.
 export async function createVerifiedSeller(ctx: TestContext, admin: TestActor): Promise<TestActor> {
   const seller = await registerUser(ctx, ['seller']);
@@ -169,13 +202,15 @@ export async function createApprovedListing(
   ctx: TestContext,
   seller: TestActor,
   admin: TestActor,
+  location?: Partial<ListingLocationInput>,
 ): Promise<PublicListing> {
   const districtId = await firstDistrictId(ctx);
   const draft = await seller.agent.post(`${API}/listings`).send({
     titleEn: 'E2E Listing',
     assetType: 'apartment',
     transactionType: 'sale',
-    location: { districtId },
+    // District is required; callers may override/extend with deeper levels.
+    location: { districtId, ...location },
   });
   expectOk(draft.status, 'create draft');
   const listingId = (draft.body.data as PublicListing).id;

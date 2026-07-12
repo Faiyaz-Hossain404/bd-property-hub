@@ -3,8 +3,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
 
-import { ASSET_TYPES, TRANSACTION_TYPES, type GeoDistrict, type GeoDivision } from "@bdph/types"
-import { getDistricts, getDivisions } from "@/lib/api"
+import {
+  ASSET_TYPES,
+  TRANSACTION_TYPES,
+  type GeoCityUpazila,
+  type GeoDistrict,
+  type GeoDivision,
+} from "@bdph/types"
+import { getCitiesUpazilas, getDistricts, getDivisions } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -39,6 +45,7 @@ export function CatalogFilters({ value, onApply }: Props) {
 
   const [q, setQ] = useState(value.q)
   const [districtId, setDistrictId] = useState(value.districtId)
+  const [cityUpazilaId, setCityUpazilaId] = useState(value.cityUpazilaId)
   const [assetType, setAssetType] = useState(value.assetType)
   const [transactionType, setTransactionType] = useState(value.transactionType)
   const [priceMin, setPriceMin] = useState(value.priceMin)
@@ -47,6 +54,7 @@ export function CatalogFilters({ value, onApply }: Props) {
 
   const [divisions, setDivisions] = useState<GeoDivision[]>([])
   const [districts, setDistricts] = useState<GeoDistrict[]>([])
+  const [citiesUpazilas, setCitiesUpazilas] = useState<GeoCityUpazila[]>([])
   const [geoError, setGeoError] = useState(false)
 
   // Geography is reference data — fetch divisions (for the group labels) and the
@@ -67,14 +75,50 @@ export function CatalogFilters({ value, onApply }: Props) {
     }
   }, [])
 
+  // The city/upazila drill-down cascades off the selected district; the full list
+  // is large, so it's only fetched once a district is chosen. Clearing the district
+  // clears the drill-down list too.
+  useEffect(() => {
+    if (!districtId) {
+      setCitiesUpazilas([])
+      return
+    }
+    let active = true
+    getCitiesUpazilas(districtId)
+      .then((data) => {
+        if (active) setCitiesUpazilas(data)
+      })
+      .catch(() => {
+        if (active) setGeoError(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [districtId])
+
   useEffect(() => {
     setQ(value.q)
     setDistrictId(value.districtId)
+    setCityUpazilaId(value.cityUpazilaId)
     setAssetType(value.assetType)
     setTransactionType(value.transactionType)
     setPriceMin(value.priceMin)
     setPriceMax(value.priceMax)
-  }, [value.q, value.districtId, value.assetType, value.transactionType, value.priceMin, value.priceMax])
+  }, [
+    value.q,
+    value.districtId,
+    value.cityUpazilaId,
+    value.assetType,
+    value.transactionType,
+    value.priceMin,
+    value.priceMax,
+  ])
+
+  // Changing the district invalidates any drill-down under the old one.
+  function handleDistrictChange(next: string) {
+    setDistrictId(next)
+    setCityUpazilaId("")
+  }
 
   // Districts grouped under their division, divisions kept in their API order.
   const districtGroups = useMemo<DivisionGroup[]>(() => {
@@ -92,6 +136,7 @@ export function CatalogFilters({ value, onApply }: Props) {
   const hasActiveFilter =
     value.q !== "" ||
     value.districtId !== "" ||
+    value.cityUpazilaId !== "" ||
     value.assetType !== "" ||
     value.transactionType !== "" ||
     value.priceMin !== "" ||
@@ -110,10 +155,12 @@ export function CatalogFilters({ value, onApply }: Props) {
       return
     }
     setError(null)
-    // Sort isn't part of this form — preserve the active order.
+    // Sort isn't part of this form — preserve the active order. A drill-down only
+    // rides along when a district is actually selected.
     onApply({
       q: q.trim(),
       districtId,
+      cityUpazilaId: districtId ? cityUpazilaId : "",
       assetType,
       transactionType,
       priceMin: min,
@@ -127,6 +174,7 @@ export function CatalogFilters({ value, onApply }: Props) {
     onApply({
       q: "",
       districtId: "",
+      cityUpazilaId: "",
       assetType: "",
       transactionType: "",
       priceMin: "",
@@ -160,7 +208,7 @@ export function CatalogFilters({ value, onApply }: Props) {
           <select
             id="filter-district"
             value={districtId}
-            onChange={(event) => setDistrictId(event.target.value)}
+            onChange={(event) => handleDistrictChange(event.target.value)}
             disabled={geoError}
             className={SELECT_CLASS}
           >
@@ -176,6 +224,24 @@ export function CatalogFilters({ value, onApply }: Props) {
                   </option>
                 ))}
               </optgroup>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="filter-city-upazila">{t("filters.cityUpazila")}</Label>
+          <select
+            id="filter-city-upazila"
+            value={cityUpazilaId}
+            onChange={(event) => setCityUpazilaId(event.target.value)}
+            disabled={geoError || !districtId}
+            className={SELECT_CLASS}
+          >
+            <option value="">{t("filters.all")}</option>
+            {citiesUpazilas.map((row) => (
+              <option key={row.id} value={row.id}>
+                {locale === "bn" ? row.nameBn : row.nameEn}
+              </option>
             ))}
           </select>
         </div>

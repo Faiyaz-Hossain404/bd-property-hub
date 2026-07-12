@@ -70,15 +70,14 @@ export const ListingPricingSchema = SchemaFactory.createForClass(ListingPricing)
 
 // Denormalized area-level location snapshot (DATABASE_DESIGN.md §4-§5, MAP-5).
 // Copied from the geo taxonomy at write time so catalog reads can render and
-// group by division/district without populating the reference collections; if a
-// place is ever renamed, a backfill refreshes these snapshots. This holds only
+// group by division/district/upazila without populating the reference collections;
+// if a place is ever renamed, a backfill refreshes these snapshots. This holds only
 // the administrative area — exact coordinates (exactPoint), the public fuzzed
-// displayPoint (MAP-2), and address_line are separate, later fields.
+// displayPoint (MAP-2), and address_line are separate, later fields. Division +
+// district are always set; the finer levels (city/upazila, area/thana) and the
+// optional city-corporation tag are present only when the seller drilled down.
 @Schema({ _id: false })
 export class ListingLocation {
-  // Refs back to the geo collections. No standalone index here yet: the catalog
-  // filter that will need it (DISC-3) should add one compound index spanning
-  // publication/availability/location so it actually covers that query.
   @Prop({ type: Types.ObjectId, ref: 'Division', required: true })
   divisionId!: Types.ObjectId;
 
@@ -102,6 +101,42 @@ export class ListingLocation {
 
   @Prop({ required: true })
   districtNameBn!: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'CityUpazila', default: null })
+  cityUpazilaId!: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  cityUpazilaCode!: string | null;
+
+  @Prop({ type: String, default: null })
+  cityUpazilaNameEn!: string | null;
+
+  @Prop({ type: String, default: null })
+  cityUpazilaNameBn!: string | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'AreaThana', default: null })
+  areaThanaId!: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  areaThanaCode!: string | null;
+
+  @Prop({ type: String, default: null })
+  areaThanaNameEn!: string | null;
+
+  @Prop({ type: String, default: null })
+  areaThanaNameBn!: string | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'CityCorporation', default: null })
+  cityCorporationId!: Types.ObjectId | null;
+
+  @Prop({ type: String, default: null })
+  cityCorporationCode!: string | null;
+
+  @Prop({ type: String, default: null })
+  cityCorporationNameEn!: string | null;
+
+  @Prop({ type: String, default: null })
+  cityCorporationNameBn!: string | null;
 }
 export const ListingLocationSchema = SchemaFactory.createForClass(ListingLocation);
 
@@ -211,6 +246,18 @@ ListingSchema.index({
   publicationStatus: 1,
   availabilityStatus: 1,
   'location.districtId': 1,
+  createdAt: -1,
+  _id: -1,
+});
+
+// Backs the city/upazila drill-down (DISC-3) — the same shape as the district
+// index with the upazila slotted in, so a district+upazila browse is covered. An
+// area/thana filter (finer still) rides this index and scans within the narrowed
+// set; a dedicated index isn't warranted until area-level browse is common.
+ListingSchema.index({
+  publicationStatus: 1,
+  availabilityStatus: 1,
+  'location.cityUpazilaId': 1,
   createdAt: -1,
   _id: -1,
 });
