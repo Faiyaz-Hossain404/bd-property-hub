@@ -46,7 +46,7 @@ export class ListingMediaController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.commitUploadedMedia(user.id, id, body);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Reorder the listing's photos (order[0] is the cover). PATCH rather than a
@@ -63,7 +63,7 @@ export class ListingMediaController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.reorderMedia(user.id, id, body.order);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Remove one photo, addressed by its media subdocument id. Ownership +
@@ -77,6 +77,6 @@ export class ListingMediaController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.removeMedia(user.id, id, mediaId);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 }

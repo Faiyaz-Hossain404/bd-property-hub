@@ -140,6 +140,19 @@ export class ListingLocation {
 }
 export const ListingLocationSchema = SchemaFactory.createForClass(ListingLocation);
 
+// GeoJSON Point (MAP-1/MAP-2): `coordinates` is [lng, lat] — Mongo's order, not
+// lat/lng. Used for both the private exact pin and the public fuzzed point; the
+// 2dsphere indexes below make them radius/bounds-queryable (MAP-4).
+@Schema({ _id: false })
+export class ListingGeoPoint {
+  @Prop({ type: String, enum: ['Point'], required: true, default: 'Point' })
+  type!: 'Point';
+
+  @Prop({ type: [Number], required: true })
+  coordinates!: number[];
+}
+export const ListingGeoPointSchema = SchemaFactory.createForClass(ListingGeoPoint);
+
 // One embedded media item (DATABASE_DESIGN.md §5 `media[]`). Bounded and read with
 // the listing, so it is embedded rather than a separate collection. The binary
 // lives in Cloudinary; this holds the storage key (`public_id`), a server-built
@@ -229,6 +242,20 @@ export class Listing {
   @Prop({ type: ListingLocationSchema, default: null })
   location!: ListingLocation | null;
 
+  // The seller's exact pin (MAP-2) — PRIVATE/internal. Never appears in a public
+  // projection; only the owner and staff ever see it (field-level authorization in
+  // ListingsService.toPublic). Null until the seller drops a pin.
+  @Prop({ type: ListingGeoPointSchema, default: null })
+  exactPoint!: ListingGeoPoint | null;
+
+  // The public approximate point: exactPoint offset 150–400m by a secret-keyed,
+  // per-(owner, location cell) deterministic function (see listing-pin.ts) and
+  // STORED at write time — reads are stable, and one owner's co-located listings
+  // share the same offset so they can't be averaged back to the true location.
+  // Set/cleared together with exactPoint.
+  @Prop({ type: ListingGeoPointSchema, default: null })
+  displayPoint!: ListingGeoPoint | null;
+
   @Prop({ type: [ListingMediaSchema], default: [] })
   media!: ListingMedia[];
 }
@@ -261,3 +288,9 @@ ListingSchema.index({
   createdAt: -1,
   _id: -1,
 });
+
+// Geo indexes (MAP-2/MAP-4): 2dsphere on both points, sparse so pinless listings
+// stay out of the index. Public map/radius queries must use displayPoint only —
+// a $near over exactPoint exposed to clients would leak the private location.
+ListingSchema.index({ exactPoint: '2dsphere' }, { sparse: true });
+ListingSchema.index({ displayPoint: '2dsphere' }, { sparse: true });

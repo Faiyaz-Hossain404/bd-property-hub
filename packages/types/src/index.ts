@@ -188,6 +188,43 @@ export const listingLocationInputSchema = z
   });
 export type ListingLocationInput = z.infer<typeof listingLocationInputSchema>;
 
+// --- Map pin (MAP-1 / MAP-2) ---------------------------------------------------
+// A seller may drop an exact map pin on their property. The exact point is
+// PRIVATE (owner/staff only); the public ever sees only a derived point offset a
+// random distance within the annulus below, so the pin conveys the neighbourhood
+// without revealing the address (A5/MAP-2). The offset is drawn once at write
+// time and stored — recomputing per read would let repeated reads be averaged
+// back to the true location.
+export const PIN_FUZZ_MIN_METERS = 150;
+export const PIN_FUZZ_MAX_METERS = 400;
+
+// Service area: a bounding box around Bangladesh (with a small margin). A pin
+// outside it is a client mistake — rejected at the boundary, before any storage.
+export const BANGLADESH_BOUNDS = {
+  minLat: 20.3,
+  maxLat: 26.7,
+  minLng: 88.0,
+  maxLng: 92.7,
+} as const;
+
+export const listingPinInputSchema = z.object({
+  lat: z
+    .number()
+    .min(BANGLADESH_BOUNDS.minLat, 'pin is outside the service area')
+    .max(BANGLADESH_BOUNDS.maxLat, 'pin is outside the service area'),
+  lng: z
+    .number()
+    .min(BANGLADESH_BOUNDS.minLng, 'pin is outside the service area')
+    .max(BANGLADESH_BOUNDS.maxLng, 'pin is outside the service area'),
+});
+export type ListingPinInput = z.infer<typeof listingPinInputSchema>;
+
+// A plain lat/lng pair as it appears in client-safe projections.
+export interface PublicGeoPoint {
+  lat: number;
+  lng: number;
+}
+
 // Boundary input for POST /listings (create draft) — only what a seller must
 // supply to start; the rest is filled in via PATCH before submit.
 export const createListingInputSchema = z.object({
@@ -200,6 +237,9 @@ export const createListingInputSchema = z.object({
   attributes: listingAttributesSchema.optional(),
   pricing: listingPricingSchema.optional(),
   location: listingLocationInputSchema.optional(),
+  // Exact map pin (MAP-2): omitted = unchanged, null = remove the pin, an object
+  // = set it (the server derives and stores the public fuzzed point).
+  pin: listingPinInputSchema.nullable().optional(),
 });
 export type CreateListingInput = z.infer<typeof createListingInputSchema>;
 
@@ -352,7 +392,11 @@ export interface PublicListingLocation {
 // Client-safe projection of a listing.
 export interface PublicListing {
   id: string;
-  ownerId: string;
+  // Present ONLY in owner/staff projections. Anonymous responses omit it: a
+  // stable public owner handle would let a scraper group one seller's co-located
+  // listings and average their fuzzed displayPoints back toward the true
+  // location (MAP-2), besides being needless account-level exposure.
+  ownerId?: string;
   titleEn: string;
   titleBn: string | null;
   descriptionEn: string | null;
@@ -366,6 +410,13 @@ export interface PublicListing {
   attributes: ListingAttributes;
   pricing: ListingPricing;
   location: PublicListingLocation | null;
+  // Approximate map point (MAP-2): the seller's pin offset within
+  // PIN_FUZZ_MIN/MAX_METERS. Null when the seller hasn't dropped a pin. This is
+  // the ONLY point anonymous viewers ever see.
+  displayPoint: PublicGeoPoint | null;
+  // The seller's exact pin — present ONLY in projections built for the listing's
+  // owner or staff (never in catalog/detail responses for other viewers).
+  exactPoint?: PublicGeoPoint;
   media: PublicListingMedia[];
   createdAt: string;
   updatedAt: string;
