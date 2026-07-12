@@ -58,7 +58,7 @@ export class ListingsService {
 
   async createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
     const location = input.location
-      ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location.districtId))
+      ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location))
       : null;
     return this.listingModel.create({
       ownerId: new Types.ObjectId(ownerId),
@@ -130,16 +130,29 @@ export class ListingsService {
   async findPublicPage(
     query: PublicListingQuery,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
-    const { limit, cursor, sort, district_id, asset_type, transaction_type, price_min, price_max, q } =
-      query;
+    const {
+      limit,
+      cursor,
+      sort,
+      district_id,
+      city_upazila_id,
+      asset_type,
+      transaction_type,
+      price_min,
+      price_max,
+      q,
+    } = query;
     const filter: FilterQuery<ListingDocument> = {
       publicationStatus: 'approved',
       availabilityStatus: { $in: ['available', 'pending'] },
     };
-    // district_id is Zod-validated to 24-hex at the boundary, so casting is safe;
-    // the equality narrows the query to a single Zilla (DISC-3).
+    // district_id / city_upazila_id are Zod-validated to 24-hex at the boundary, so
+    // casting is safe; each equality narrows the query one level deeper (DISC-3).
     if (district_id) {
       filter['location.districtId'] = new Types.ObjectId(district_id);
+    }
+    if (city_upazila_id) {
+      filter['location.cityUpazilaId'] = new Types.ObjectId(city_upazila_id);
     }
     if (asset_type) {
       filter.assetType = asset_type;
@@ -283,7 +296,7 @@ export class ListingsService {
     // field-by-field like attributes/pricing) when the seller sends a new one.
     if (input.location !== undefined) {
       listing.location = this.toLocationSubdoc(
-        await this.geo.resolveListingLocation(input.location.districtId),
+        await this.geo.resolveListingLocation(input.location),
       );
     }
 
@@ -432,7 +445,8 @@ export class ListingsService {
   }
 
   // Maps a resolved snapshot (string ids) into the stored subdoc shape (ObjectId
-  // ids). Shared by createDraft and update so location persists identically.
+  // ids). Shared by createDraft and update so location persists identically. The
+  // finer levels are optional on the snapshot; an absent level is stored as null.
   private toLocationSubdoc(snapshot: ListingLocationSnapshot): ListingLocation {
     return {
       divisionId: new Types.ObjectId(snapshot.divisionId),
@@ -443,9 +457,26 @@ export class ListingsService {
       districtCode: snapshot.districtCode,
       districtNameEn: snapshot.districtNameEn,
       districtNameBn: snapshot.districtNameBn,
+      cityUpazilaId: snapshot.cityUpazilaId ? new Types.ObjectId(snapshot.cityUpazilaId) : null,
+      cityUpazilaCode: snapshot.cityUpazilaCode ?? null,
+      cityUpazilaNameEn: snapshot.cityUpazilaNameEn ?? null,
+      cityUpazilaNameBn: snapshot.cityUpazilaNameBn ?? null,
+      areaThanaId: snapshot.areaThanaId ? new Types.ObjectId(snapshot.areaThanaId) : null,
+      areaThanaCode: snapshot.areaThanaCode ?? null,
+      areaThanaNameEn: snapshot.areaThanaNameEn ?? null,
+      areaThanaNameBn: snapshot.areaThanaNameBn ?? null,
+      cityCorporationId: snapshot.cityCorporationId
+        ? new Types.ObjectId(snapshot.cityCorporationId)
+        : null,
+      cityCorporationCode: snapshot.cityCorporationCode ?? null,
+      cityCorporationNameEn: snapshot.cityCorporationNameEn ?? null,
+      cityCorporationNameBn: snapshot.cityCorporationNameBn ?? null,
     };
   }
 
+  // Client-safe projection of the stored location. Only administrative names/ids
+  // (A5/MAP-2) — the finer levels are omitted (left undefined) when the seller
+  // didn't drill down that far, so the payload stays clean.
   private locationToPublic(location: ListingLocation): PublicListingLocation {
     return {
       divisionId: location.divisionId.toString(),
@@ -456,6 +487,18 @@ export class ListingsService {
       districtCode: location.districtCode,
       districtNameEn: location.districtNameEn,
       districtNameBn: location.districtNameBn,
+      cityUpazilaId: location.cityUpazilaId?.toString(),
+      cityUpazilaCode: location.cityUpazilaCode ?? undefined,
+      cityUpazilaNameEn: location.cityUpazilaNameEn ?? undefined,
+      cityUpazilaNameBn: location.cityUpazilaNameBn ?? undefined,
+      areaThanaId: location.areaThanaId?.toString(),
+      areaThanaCode: location.areaThanaCode ?? undefined,
+      areaThanaNameEn: location.areaThanaNameEn ?? undefined,
+      areaThanaNameBn: location.areaThanaNameBn ?? undefined,
+      cityCorporationId: location.cityCorporationId?.toString(),
+      cityCorporationCode: location.cityCorporationCode ?? undefined,
+      cityCorporationNameEn: location.cityCorporationNameEn ?? undefined,
+      cityCorporationNameBn: location.cityCorporationNameBn ?? undefined,
     };
   }
 

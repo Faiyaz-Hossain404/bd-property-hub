@@ -11,6 +11,10 @@ export type CatalogFilterValue = {
   // applies via the bar's Apply button and round-trips through the URL as `q`.
   q: string
   districtId: string
+  // City/upazila drill-down under the selected Zilla; "" means no drill-down.
+  // Round-trips through the URL as `city_upazila_id`. Cleared whenever districtId
+  // changes so it can never point outside the chosen district.
+  cityUpazilaId: string
   assetType: AssetType | ""
   transactionType: TransactionType | ""
   priceMin: string

@@ -34,6 +34,7 @@ const MAX_SEARCH_LENGTH = 80
 function parseFilters(params: URLSearchParams): CatalogFilterValue {
   const q = (params.get("q") ?? "").trim().slice(0, MAX_SEARCH_LENGTH)
   const districtId = params.get("district_id") ?? ""
+  const cityUpazilaId = params.get("city_upazila_id") ?? ""
   const assetType = params.get("asset_type")
   const transactionType = params.get("transaction_type")
   const priceMin = params.get("price_min") ?? ""
@@ -41,9 +42,13 @@ function parseFilters(params: URLSearchParams): CatalogFilterValue {
   const sort = params.get("sort")
   const digits = /^\d+$/
   const hex24 = /^[a-f0-9]{24}$/i
+  const validDistrict = hex24.test(districtId) ? districtId : ""
   return {
     q,
-    districtId: hex24.test(districtId) ? districtId : "",
+    districtId: validDistrict,
+    // A drill-down only makes sense under a district — drop it if the district is
+    // missing/invalid so the pair can't disagree.
+    cityUpazilaId: validDistrict && hex24.test(cityUpazilaId) ? cityUpazilaId : "",
     assetType: ASSET_TYPES.includes(assetType as AssetType) ? (assetType as AssetType) : "",
     transactionType: TRANSACTION_TYPES.includes(transactionType as TransactionType)
       ? (transactionType as TransactionType)
@@ -58,6 +63,10 @@ function toSearchString(filters: CatalogFilterValue): string {
   const next = new URLSearchParams()
   if (filters.q) next.set("q", filters.q)
   if (filters.districtId) next.set("district_id", filters.districtId)
+  // Only meaningful alongside a district (parseFilters drops an orphan anyway).
+  if (filters.districtId && filters.cityUpazilaId) {
+    next.set("city_upazila_id", filters.cityUpazilaId)
+  }
   if (filters.assetType) next.set("asset_type", filters.assetType)
   if (filters.transactionType) next.set("transaction_type", filters.transactionType)
   if (filters.priceMin) next.set("price_min", filters.priceMin)

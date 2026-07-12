@@ -3,6 +3,9 @@ import type {
   AssetType,
   CommitListingMediaInput,
   CreateListingInput,
+  GeoAreaThana,
+  GeoCityCorporation,
+  GeoCityUpazila,
   GeoDistrict,
   GeoDivision,
   ListingMediaUploadTicket,
@@ -231,6 +234,7 @@ export function getMyListings(): Promise<PublicListing[]> {
 export type BrowseListingsParams = {
   cursor?: string | null;
   districtId?: string | null;
+  cityUpazilaId?: string | null;
   assetType?: AssetType | null;
   transactionType?: TransactionType | null;
   priceMin?: number | null;
@@ -244,6 +248,7 @@ export function browseListings(params: BrowseListingsParams): Promise<ApiPage<Pu
   const search = new URLSearchParams();
   if (params.cursor) search.set('cursor', params.cursor);
   if (params.districtId) search.set('district_id', params.districtId);
+  if (params.cityUpazilaId) search.set('city_upazila_id', params.cityUpazilaId);
   if (params.assetType) search.set('asset_type', params.assetType);
   if (params.transactionType) search.set('transaction_type', params.transactionType);
   if (params.priceMin != null) search.set('price_min', String(params.priceMin));
@@ -325,6 +330,24 @@ export function getDivisions(): Promise<GeoDivision[]> {
 export function getDistricts(divisionId?: string): Promise<GeoDistrict[]> {
   const query = divisionId ? `?division_id=${divisionId}` : '';
   return getJson<GeoDistrict[]>(`/geo/districts${query}`);
+}
+
+// Cities/upazilas under a district (the district → upazila cascade). The full list
+// is large, so callers pass a district to narrow it.
+export function getCitiesUpazilas(districtId?: string): Promise<GeoCityUpazila[]> {
+  const query = districtId ? `?district_id=${districtId}` : '';
+  return getJson<GeoCityUpazila[]>(`/geo/cities-upazilas${query}`);
+}
+
+// Areas/thanas under a city/upazila (the upazila → area cascade).
+export function getAreasThanas(cityUpazilaId?: string): Promise<GeoAreaThana[]> {
+  const query = cityUpazilaId ? `?city_upazila_id=${cityUpazilaId}` : '';
+  return getJson<GeoAreaThana[]>(`/geo/areas-thanas${query}`);
+}
+
+// The flat city-corporation tag list (FR-S7c) — long-cached reference data.
+export function getCityCorporations(): Promise<GeoCityCorporation[]> {
+  return getJson<GeoCityCorporation[]>('/geo/city-corporations');
 }
 
 export function getModerationQueue(): Promise<PublicListing[]> {

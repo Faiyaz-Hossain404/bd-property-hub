@@ -23,12 +23,25 @@ export function listingDescription(listing: LocaleDescription, locale: string): 
   return listing.descriptionEn;
 }
 
-// Area-level only (A5/MAP-2): district + division. Exact coordinates and
-// address_line are never in the public projection, so they can never appear here.
+// Area-level only (A5/MAP-2): the administrative chain from the finest level the
+// seller chose up to the division. Exact coordinates and address_line are never in
+// the public projection, so they can never appear here. Reads finest → coarsest
+// (e.g. "Savar, Dhaka, Dhaka") and drops any level the seller didn't fill in, so a
+// district-only listing still reads "Dhaka, Dhaka".
 export function locationLabel(location: PublicListingLocation | null, locale: string): string | null {
   if (!location) return null;
-  if (locale === 'bn') return `${location.districtNameBn}, ${location.divisionNameBn}`;
-  return `${location.districtNameEn}, ${location.divisionNameEn}`;
+  const bn = locale === 'bn';
+  const parts = [
+    bn ? location.areaThanaNameBn : location.areaThanaNameEn,
+    bn ? location.cityUpazilaNameBn : location.cityUpazilaNameEn,
+    bn ? location.districtNameBn : location.districtNameEn,
+    bn ? location.divisionNameBn : location.divisionNameEn,
+  ];
+  // Drop absent levels and collapse an adjacent duplicate (e.g. a "Dhaka" upazila
+  // inside "Dhaka" district) so the label never repeats the same name back to back.
+  const shown = parts.filter((part): part is string => Boolean(part));
+  const deduped = shown.filter((part, index) => part !== shown[index - 1]);
+  return deduped.join(', ');
 }
 
 // Bengali numerals for the bn locale, Western digits otherwise — matches the

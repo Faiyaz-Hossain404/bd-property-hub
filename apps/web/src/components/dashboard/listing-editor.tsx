@@ -7,14 +7,26 @@ import { LoaderCircle } from "lucide-react"
 import {
   PRICE_TYPES,
   RENT_PERIODS,
+  type GeoAreaThana,
+  type GeoCityCorporation,
+  type GeoCityUpazila,
   type GeoDistrict,
   type GeoDivision,
+  type ListingLocationInput,
   type PriceType,
   type PublicListing,
   type RentPeriod,
   type UpdateListingInput,
 } from "@bdph/types"
-import { ApiError, getDistricts, getDivisions, updateListing } from "@/lib/api"
+import {
+  ApiError,
+  getAreasThanas,
+  getCitiesUpazilas,
+  getCityCorporations,
+  getDistricts,
+  getDivisions,
+  updateListing,
+} from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,18 +48,28 @@ type Props = {
 // Per-draft "Location & price" editor. Sellers fill these in after creating a
 // draft so the listing is complete enough to show meaningfully in the public
 // catalog. Persists via PATCH /listings/:id and hands the refreshed listing back
-// to the parent. Only area-level location (district → division) is collected —
-// exact coordinates/address are out of scope (A5/MAP-2).
+// to the parent. Location is collected as a cascade — division → district (Zilla)
+// → city/upazila → area/thana — plus an optional city-corporation tag; district is
+// required, the finer levels are optional. Only area-level administrative location
+// is collected — exact coordinates/address are out of scope here (A5/MAP-2).
 export function ListingEditor({ listing, onUpdated, t }: Props) {
   const locale = useLocale()
   const isRent = listing.transactionType === "rent"
 
   const [divisions, setDivisions] = useState<GeoDivision[]>([])
   const [districts, setDistricts] = useState<GeoDistrict[]>([])
+  const [citiesUpazilas, setCitiesUpazilas] = useState<GeoCityUpazila[]>([])
+  const [areasThanas, setAreasThanas] = useState<GeoAreaThana[]>([])
+  const [cityCorporations, setCityCorporations] = useState<GeoCityCorporation[]>([])
   const [geoError, setGeoError] = useState(false)
 
   const [divisionId, setDivisionId] = useState(listing.location?.divisionId ?? "")
   const [districtId, setDistrictId] = useState(listing.location?.districtId ?? "")
+  const [cityUpazilaId, setCityUpazilaId] = useState(listing.location?.cityUpazilaId ?? "")
+  const [areaThanaId, setAreaThanaId] = useState(listing.location?.areaThanaId ?? "")
+  const [cityCorporationId, setCityCorporationId] = useState(
+    listing.location?.cityCorporationId ?? "",
+  )
   const [amount, setAmount] = useState(
     listing.pricing.amountBdt != null ? String(listing.pricing.amountBdt) : "",
   )
@@ -58,12 +80,14 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
   const [isSaved, setIsSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Divisions are reference data — load once.
+  // Divisions and the city-corporation tag list are reference data — load once.
   useEffect(() => {
     let active = true
-    getDivisions()
-      .then((data) => {
-        if (active) setDivisions(data)
+    Promise.all([getDivisions(), getCityCorporations()])
+      .then(([divisionList, corporationList]) => {
+        if (!active) return
+        setDivisions(divisionList)
+        setCityCorporations(corporationList)
       })
       .catch(() => {
         if (active) setGeoError(true)
@@ -73,8 +97,10 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
     }
   }, [])
 
-  // Districts cascade off the selected division. Reloads on every change; the
-  // initial run loads the saved division's districts so the saved district shows.
+  // Each finer level cascades off its parent id. The list reloads whenever the
+  // parent changes; the initial run loads the saved parent's children so the saved
+  // selection shows. Child selections are cleared in the change handlers, not here,
+  // so a saved chain survives the mount.
   useEffect(() => {
     if (!divisionId) {
       setDistricts([])
@@ -93,10 +119,61 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
     }
   }, [divisionId])
 
+  useEffect(() => {
+    if (!districtId) {
+      setCitiesUpazilas([])
+      return
+    }
+    let active = true
+    getCitiesUpazilas(districtId)
+      .then((data) => {
+        if (active) setCitiesUpazilas(data)
+      })
+      .catch(() => {
+        if (active) setGeoError(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [districtId])
+
+  useEffect(() => {
+    if (!cityUpazilaId) {
+      setAreasThanas([])
+      return
+    }
+    let active = true
+    getAreasThanas(cityUpazilaId)
+      .then((data) => {
+        if (active) setAreasThanas(data)
+      })
+      .catch(() => {
+        if (active) setGeoError(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [cityUpazilaId])
+
+  // Changing a level invalidates every finer selection under it.
   function handleDivisionChange(value: string) {
     setDivisionId(value)
-    // The previously selected district belongs to the old division — clear it.
     setDistrictId("")
+    setCityUpazilaId("")
+    setAreaThanaId("")
+    setIsSaved(false)
+  }
+
+  function handleDistrictChange(value: string) {
+    setDistrictId(value)
+    setCityUpazilaId("")
+    setAreaThanaId("")
+    setIsSaved(false)
+  }
+
+  function handleUpazilaChange(value: string) {
+    setCityUpazilaId(value)
+    setAreaThanaId("")
     setIsSaved(false)
   }
 
@@ -112,10 +189,20 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
       return
     }
 
+    // Only send a location when a district is chosen; the API derives the division
+    // from it and validates each finer level against its parent. The finer ids are
+    // included only when set, so the chain sent is always self-consistent.
+    const location: ListingLocationInput | undefined = districtId
+      ? {
+          districtId,
+          cityUpazilaId: cityUpazilaId || undefined,
+          areaThanaId: cityUpazilaId && areaThanaId ? areaThanaId : undefined,
+          cityCorporationId: cityCorporationId || undefined,
+        }
+      : undefined
+
     const input: UpdateListingInput = {
-      // Only send a location when a district is chosen; the API derives the
-      // division from it.
-      location: districtId ? { districtId } : undefined,
+      location,
       pricing: {
         amountBdt: priceType === "on_request" || !hasAmount ? undefined : Number(trimmedAmount),
         priceType,
@@ -167,10 +254,7 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
           <select
             id={`district-${listing.id}`}
             value={districtId}
-            onChange={(event) => {
-              setDistrictId(event.target.value)
-              setIsSaved(false)
-            }}
+            onChange={(event) => handleDistrictChange(event.target.value)}
             disabled={!divisionId}
             className={SELECT_CLASS}
           >
@@ -178,6 +262,65 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
             {districts.map((district) => (
               <option key={district.id} value={district.id}>
                 {locale === "bn" ? district.nameBn : district.nameEn}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor={`upazila-${listing.id}`}>{t("cityUpazilaLabel")}</Label>
+          <select
+            id={`upazila-${listing.id}`}
+            value={cityUpazilaId}
+            onChange={(event) => handleUpazilaChange(event.target.value)}
+            disabled={!districtId}
+            className={SELECT_CLASS}
+          >
+            <option value="">{t("cityUpazilaPlaceholder")}</option>
+            {citiesUpazilas.map((row) => (
+              <option key={row.id} value={row.id}>
+                {locale === "bn" ? row.nameBn : row.nameEn}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor={`area-${listing.id}`}>{t("areaThanaLabel")}</Label>
+          <select
+            id={`area-${listing.id}`}
+            value={areaThanaId}
+            onChange={(event) => {
+              setAreaThanaId(event.target.value)
+              setIsSaved(false)
+            }}
+            disabled={!cityUpazilaId}
+            className={SELECT_CLASS}
+          >
+            <option value="">{t("areaThanaPlaceholder")}</option>
+            {areasThanas.map((row) => (
+              <option key={row.id} value={row.id}>
+                {locale === "bn" ? row.nameBn : row.nameEn}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor={`cityCorporation-${listing.id}`}>{t("cityCorporationLabel")}</Label>
+          <select
+            id={`cityCorporation-${listing.id}`}
+            value={cityCorporationId}
+            onChange={(event) => {
+              setCityCorporationId(event.target.value)
+              setIsSaved(false)
+            }}
+            className={SELECT_CLASS}
+          >
+            <option value="">{t("cityCorporationPlaceholder")}</option>
+            {cityCorporations.map((row) => (
+              <option key={row.id} value={row.id}>
+                {locale === "bn" ? row.nameBn : row.nameEn}
               </option>
             ))}
           </select>

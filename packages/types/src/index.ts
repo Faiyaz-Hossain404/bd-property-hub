@@ -160,16 +160,32 @@ export interface PublicListingMedia {
   position: number;
 }
 
-// Location selector for a listing (MAP-5). The seller picks a district (Zilla);
-// the API resolves and denormalizes its parent division + bilingual names from
-// the geo taxonomy, so the catalog can display and (later) facet on location
-// without a join. District is the *required* selector and division is derived
-// from it — the division is never sent separately, which removes any chance of a
-// division/district mismatch. City/upazila/area and a precise map pin (MAP-1)
-// are finer-grained, later increments.
-export const listingLocationInputSchema = z.object({
-  districtId: z.string().regex(/^[a-f0-9]{24}$/i, 'districtId must be a 24-character hex id'),
-});
+// Location selector for a listing (MAP-5). The seller picks a district (Zilla),
+// then may drill down to a city/upazila and an area/thana, and optionally tag a
+// city corporation (FR-S7c). The API resolves and denormalizes each chosen level's
+// parent chain + bilingual names from the geo taxonomy, so the catalog can display
+// and facet on location without a join. District is the *required* selector and
+// every coarser level (division) is derived — never sent separately, which removes
+// any chance of a mismatch. A precise map pin (MAP-1) is a later increment.
+const HEX_ID = /^[a-f0-9]{24}$/i;
+export const listingLocationInputSchema = z
+  .object({
+    districtId: z.string().regex(HEX_ID, 'districtId must be a 24-character hex id'),
+    cityUpazilaId: z.string().regex(HEX_ID, 'cityUpazilaId must be a 24-character hex id').optional(),
+    areaThanaId: z.string().regex(HEX_ID, 'areaThanaId must be a 24-character hex id').optional(),
+    cityCorporationId: z
+      .string()
+      .regex(HEX_ID, 'cityCorporationId must be a 24-character hex id')
+      .optional(),
+  })
+  // An area/thana is only meaningful under a city/upazila, and the API validates the
+  // parent chain against the ids sent — so the finer selector can't arrive without
+  // its parent. Reject it at the boundary for a clear 400 rather than a resolve-time
+  // error. (The coarser levels — division — are derived server-side, never sent.)
+  .refine((loc) => loc.areaThanaId == null || loc.cityUpazilaId != null, {
+    message: 'cityUpazilaId is required when areaThanaId is set',
+    path: ['cityUpazilaId'],
+  });
 export type ListingLocationInput = z.infer<typeof listingLocationInputSchema>;
 
 // Boundary input for POST /listings (create draft) — only what a seller must
@@ -281,6 +297,13 @@ export const publicListingQuerySchema = z
       .string()
       .regex(/^[a-f0-9]{24}$/i, 'district_id must be a 24-character hex id')
       .optional(),
+    // Optional city/upazila drill-down under the Zilla (DISC-3). Independent of
+    // district_id in the query (the client may send either or both); each just
+    // narrows the filter further.
+    city_upazila_id: z
+      .string()
+      .regex(/^[a-f0-9]{24}$/i, 'city_upazila_id must be a 24-character hex id')
+      .optional(),
     asset_type: z.enum(ASSET_TYPES).optional(),
     transaction_type: z.enum(TRANSACTION_TYPES).optional(),
     // Inclusive price bounds in whole BDT (matches listingPricing.amountBdt). A
@@ -296,11 +319,13 @@ export const publicListingQuerySchema = z
   });
 export type PublicListingQuery = z.infer<typeof publicListingQuerySchema>;
 
-// Area-level location on a listing's public projection (A5/MAP-2). Division +
-// district only — administrative areas that are safe to expose anonymously.
-// Exact coordinates and address_line are NEVER part of this projection; precise
-// location is shared manually via chat once a deal progresses. `null` until the
-// seller chooses a location (it is optional at draft time).
+// Area-level location on a listing's public projection (A5/MAP-2). Administrative
+// areas only — division → district → city/upazila → area/thana, plus an optional
+// city-corporation tag — all safe to expose anonymously. Exact coordinates and
+// address_line are NEVER part of this projection; precise location is shared
+// manually via chat once a deal progresses. `null` until the seller chooses a
+// location (it is optional at draft time). District and division are always
+// present; the finer levels are optional (a seller may stop at any depth).
 export interface PublicListingLocation {
   divisionId: string;
   divisionCode: string;
@@ -310,6 +335,18 @@ export interface PublicListingLocation {
   districtCode: string;
   districtNameEn: string;
   districtNameBn: string;
+  cityUpazilaId?: string;
+  cityUpazilaCode?: string;
+  cityUpazilaNameEn?: string;
+  cityUpazilaNameBn?: string;
+  areaThanaId?: string;
+  areaThanaCode?: string;
+  areaThanaNameEn?: string;
+  areaThanaNameBn?: string;
+  cityCorporationId?: string;
+  cityCorporationCode?: string;
+  cityCorporationNameEn?: string;
+  cityCorporationNameBn?: string;
 }
 
 // Client-safe projection of a listing.
@@ -373,11 +410,12 @@ export interface PublicSavedListing {
 
 // --- Geography (DATABASE_DESIGN.md §4, FR-G2 / MAP-5) ------------------------
 // Canonical Bangladesh administrative hierarchy, seeded as small reference
-// collections: division → district (Zilla) → city/upazila → area/thana. This
-// slice ships the top two levels; the `district` (Zilla) is the viewer's
-// *required* selector (MAP-5). `code` is a stable kebab slug used as the natural
-// key for idempotent seeding and as a cache-friendly handle. Names are bilingual
-// (EN + BN), rendered per the viewer's locale (MAP-6).
+// collections: division → district (Zilla) → city/upazila → area/thana, plus a
+// flat list of city corporations (an optional tag). The `district` (Zilla) is the
+// viewer's *required* selector (MAP-5); the finer levels are the drill-down. `code`
+// is a stable kebab slug used as the natural key for idempotent seeding and as a
+// cache-friendly handle. Names are bilingual (EN + BN), rendered per the viewer's
+// locale (MAP-6).
 export interface GeoDivision {
   id: string;
   code: string;
@@ -394,6 +432,31 @@ export interface GeoDistrict {
   nameBn: string;
 }
 
+export interface GeoCityUpazila {
+  id: string;
+  code: string;
+  districtId: string;
+  districtCode: string;
+  nameEn: string;
+  nameBn: string;
+}
+
+export interface GeoAreaThana {
+  id: string;
+  code: string;
+  cityUpazilaId: string;
+  cityUpazilaCode: string;
+  nameEn: string;
+  nameBn: string;
+}
+
+export interface GeoCityCorporation {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameBn: string;
+}
+
 // Query for GET /geo/districts — optional `division_id` narrows to one division
 // (the cascading division → Zilla picker); omitted returns all districts.
 // snake_case matches the documented geo query params (API_DESIGN.md §5); the
@@ -405,6 +468,26 @@ export const geoDistrictsQuerySchema = z.object({
     .optional(),
 });
 export type GeoDistrictsQuery = z.infer<typeof geoDistrictsQuerySchema>;
+
+// Query for GET /geo/cities-upazilas — optional `district_id` narrows to one
+// district (the district → city/upazila cascade); omitted returns all.
+export const geoCitiesUpazilasQuerySchema = z.object({
+  district_id: z
+    .string()
+    .regex(/^[a-f0-9]{24}$/i, 'district_id must be a 24-character hex id')
+    .optional(),
+});
+export type GeoCitiesUpazilasQuery = z.infer<typeof geoCitiesUpazilasQuerySchema>;
+
+// Query for GET /geo/areas-thanas — optional `city_upazila_id` narrows to one
+// city/upazila (the city/upazila → area/thana cascade); omitted returns all.
+export const geoAreasThanasQuerySchema = z.object({
+  city_upazila_id: z
+    .string()
+    .regex(/^[a-f0-9]{24}$/i, 'city_upazila_id must be a 24-character hex id')
+    .optional(),
+});
+export type GeoAreasThanasQuery = z.infer<typeof geoAreasThanasQuerySchema>;
 
 // --- API envelopes (API_DESIGN.md) ------------------------------------------
 export interface ApiData<T> {
