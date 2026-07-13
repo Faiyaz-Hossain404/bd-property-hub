@@ -30,14 +30,14 @@ export class ListingsController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.createDraft(user.id, body);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   @Get('me/listings')
   @UseGuards(SessionAuthGuard)
   async findOwn(@CurrentUser() user: PublicUser): Promise<PublicListing[]> {
     const listings = await this.listings.findOwnByOwner(user.id);
-    return listings.map((listing) => this.listings.toPublic(listing));
+    return listings.map((listing) => this.listings.toPublic(listing, { forOwnerOrStaff: true }));
   }
 
   @Patch('listings/:id')
@@ -49,7 +49,7 @@ export class ListingsController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.update(user.id, id, body);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   @Post('listings/:id/submit')
@@ -57,7 +57,7 @@ export class ListingsController {
   @Roles('seller', 'admin', 'super_admin')
   async submit(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.submitForReview(user.id, id);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Owner self-service only — not '@Roles(..., admin, super_admin)' like the
@@ -71,7 +71,7 @@ export class ListingsController {
   @Roles('seller')
   async withdraw(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.withdraw(user.id, id);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Owner self-service only, same as withdraw above — restore() checks ownership
@@ -83,7 +83,7 @@ export class ListingsController {
   @Roles('seller')
   async restore(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.restore(user.id, id);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   @Get('listings/:id/status-history')

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { ArrowLeft, LoaderCircle, MapPin } from "lucide-react"
 
-import type { PublicListing } from "@bdph/types"
+import { PIN_FUZZ_MAX_METERS, type PublicListing } from "@bdph/types"
 import { ApiError, getPublicListing } from "@/lib/api"
 import { Link } from "@/i18n/navigation"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,7 @@ import {
 import { ListingGallery } from "./listing-gallery"
 import { SaveListingButton } from "./save-listing-button"
 import { ListingModerationControls } from "./listing-moderation-controls"
+import { LocationMap } from "@/components/map/location-map"
 
 type State =
   | { status: "loading" }
@@ -180,6 +181,23 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
           <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
             {description}
           </p>
+        </div>
+      ) : null}
+
+      {/* Approximate map (MAP-2): the API only ever sends the fuzzed displayPoint,
+          so this map is honest by construction — the circle marks "around here",
+          never the address. */}
+      {listing.displayPoint ? (
+        <div className="max-w-3xl">
+          <h2 className="font-heading text-lg font-semibold text-foreground">{t("mapTitle")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("mapApproximateNote")}</p>
+          <LocationMap
+            center={listing.displayPoint}
+            zoom={14}
+            marker={listing.displayPoint}
+            circleRadiusMeters={PIN_FUZZ_MAX_METERS}
+            className="mt-3 h-72 w-full overflow-hidden rounded-xl border border-border/60"
+          />
         </div>
       ) : null}
 

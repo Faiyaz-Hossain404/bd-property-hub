@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ListingPhotos } from "./listing-photos"
 import { ListingEditor } from "./listing-editor"
+import { ListingPinEditor } from "./listing-pin-editor"
 import { ListingDetailsEditor } from "./listing-details-editor"
 import { ListingStatusHistory } from "./listing-status-history"
 import { ListingWithdraw } from "./listing-withdraw"
@@ -339,6 +340,7 @@ function ListingRow({
       {canSubmit ? (
         <>
           <ListingEditor listing={listing} onUpdated={onUpdated} t={t} />
+          <ListingPinEditor listing={listing} onUpdated={onUpdated} t={t} />
           <ListingDetailsEditor listing={listing} onUpdated={onUpdated} t={t} />
         </>
       ) : (

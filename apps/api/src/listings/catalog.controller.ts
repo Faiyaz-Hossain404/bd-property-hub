@@ -12,13 +12,13 @@ import { ListingsService } from './listings.service';
 // `approved` listings; the whole submit → moderate → approve pipeline exists to
 // gate content into here.
 //
-// SECURITY NOTE: `toPublic()` is safe to expose anonymously. It now includes an
-// area-level location (division + district only), which honors the A5/MAP-2 rule
-// — exact coordinates and address_line are deliberately NOT in the projection and
-// are shared manually via chat once a deal progresses. The model still carries no
-// media or owner KYC fields; when those land (FILE_STORAGE_ARCHITECTURE), keep
-// them out of this projection — re-confirm the rule before adding any sensitive
-// field.
+// SECURITY NOTE: `toPublic()` is safe to expose anonymously — as called here,
+// WITHOUT `forOwnerOrStaff`. The projection carries the area-level administrative
+// location and the fuzzed `displayPoint` only; the seller's exact pin, their
+// account id (`ownerId`), and address_line honor the A5/MAP-2 rule
+// (owner/staff-only, shared manually via chat once a deal progresses). Never pass
+// `forOwnerOrStaff: true` from this controller, and re-confirm the rule before
+// adding any sensitive field.
 @Controller()
 export class CatalogController {
   constructor(private readonly listings: ListingsService) {}

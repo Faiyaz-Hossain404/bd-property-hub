@@ -12,7 +12,9 @@ import type {
   CommitListingMediaInput,
   CreateListingInput,
   ListingMediaUploadTicket,
+  ListingPinInput,
   ListingPublicationStatus,
+  PublicGeoPoint,
   PublicListing,
   PublicListingLocation,
   PublicListingMedia,
@@ -30,7 +32,14 @@ import {
 import { UsersService } from '../users/users.service';
 import { escapeRegExp } from './listing-search.util';
 import { canReinstateFrom, canTakeDownFrom, isStaffLocked } from './listing-moderation';
-import { Listing, ListingDocument, ListingLocation, ListingMedia } from './schemas/listing.schema';
+import { fuzzPin } from './listing-pin';
+import {
+  Listing,
+  ListingDocument,
+  ListingGeoPoint,
+  ListingLocation,
+  ListingMedia,
+} from './schemas/listing.schema';
 import { ListingStatusHistory, ListingStatusHistoryDocument } from './schemas/listing-status-history.schema';
 import { GeoService, type ListingLocationSnapshot } from '../geo/geo.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -60,6 +69,9 @@ export class ListingsService {
     const location = input.location
       ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location))
       : null;
+    const pin = input.pin
+      ? this.pinSubdocs(input.pin, ownerId)
+      : { exactPoint: null, displayPoint: null };
     return this.listingModel.create({
       ownerId: new Types.ObjectId(ownerId),
       titleEn: input.titleEn,
@@ -72,6 +84,8 @@ export class ListingsService {
       attributes: input.attributes ?? {},
       pricing: input.pricing ?? {},
       location,
+      exactPoint: pin.exactPoint,
+      displayPoint: pin.displayPoint,
     });
   }
 
@@ -300,6 +314,17 @@ export class ListingsService {
       );
     }
 
+    // Map pin (MAP-2): omitted = unchanged, null = removed, object = set. Setting
+    // draws a fresh stored offset — the public point moves with the pin, never
+    // independently of it.
+    if (input.pin !== undefined) {
+      const pin = input.pin
+      ? this.pinSubdocs(input.pin, ownerId)
+      : { exactPoint: null, displayPoint: null };
+      listing.exactPoint = pin.exactPoint;
+      listing.displayPoint = pin.displayPoint;
+    }
+
     await listing.save();
     return listing;
   }
@@ -406,12 +431,26 @@ export class ListingsService {
     return this.transitionStatus(listing, 'approved', actorId, null);
   }
 
-  toPublic(listing: ListingDocument): PublicListing {
+  // Client-safe projection. `forOwnerOrStaff` is the field-level authorization
+  // gate (MAP-2/A5) for what only the listing's owner and staff may see: the
+  // exact pin and the owner's account id (a public owner handle would let a
+  // scraper group one seller's co-located listings and average their fuzzed
+  // points). It defaults to false, so every call site is private-by-default —
+  // only the owner routes (ListingsController, media) and staff moderation opt
+  // in. The anonymous catalog and buyers' saved lists never pass it.
+  toPublic(
+    listing: ListingDocument,
+    options?: { forOwnerOrStaff?: boolean },
+  ): PublicListing {
     const createdAt = listing.get('createdAt') as Date | undefined;
     const updatedAt = listing.get('updatedAt') as Date | undefined;
+    const exactPoint = options?.forOwnerOrStaff
+      ? this.geoPointToPublic(listing.exactPoint)
+      : null;
     return {
+      ...(exactPoint ? { exactPoint } : {}),
+      ...(options?.forOwnerOrStaff ? { ownerId: listing.ownerId.toString() } : {}),
       id: listing._id.toString(),
-      ownerId: listing.ownerId.toString(),
       titleEn: listing.titleEn,
       titleBn: listing.titleBn,
       descriptionEn: listing.descriptionEn,
@@ -438,10 +477,36 @@ export class ListingsService {
         rentPeriod: listing.pricing.rentPeriod ?? undefined,
       },
       location: listing.location ? this.locationToPublic(listing.location) : null,
+      displayPoint: this.geoPointToPublic(listing.displayPoint),
       media: this.mediaToPublic(listing.media),
       createdAt: (createdAt ?? new Date()).toISOString(),
       updatedAt: (updatedAt ?? new Date()).toISOString(),
     };
+  }
+
+  // Exact pin + its stored fuzzed twin, minted together (MAP-2) so they can never
+  // drift apart. The offset is keyed on the owner (see listing-pin.ts) so one
+  // seller's co-located listings share a single offset — a scraper averaging them
+  // recovers the offset point, never the true one. GeoJSON stores [lng, lat].
+  private pinSubdocs(
+    pin: ListingPinInput,
+    ownerId: string,
+  ): {
+    exactPoint: ListingGeoPoint;
+    displayPoint: ListingGeoPoint;
+  } {
+    const fuzzed = fuzzPin(pin, ownerId);
+    return {
+      exactPoint: { type: 'Point', coordinates: [pin.lng, pin.lat] },
+      displayPoint: { type: 'Point', coordinates: [fuzzed.lng, fuzzed.lat] },
+    };
+  }
+
+  private geoPointToPublic(point: ListingGeoPoint | null): PublicGeoPoint | null {
+    if (!point) return null;
+    const [lng, lat] = point.coordinates;
+    if (lng == null || lat == null) return null;
+    return { lat, lng };
   }
 
   // Maps a resolved snapshot (string ids) into the stored subdoc shape (ObjectId

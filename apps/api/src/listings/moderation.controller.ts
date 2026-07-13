@@ -25,20 +25,20 @@ export class ModerationController {
   @Get('queue')
   async queue(): Promise<PublicListing[]> {
     const listings = await this.listings.findPendingQueue();
-    return listings.map((listing) => this.listings.toPublic(listing));
+    return listings.map((listing) => this.listings.toPublic(listing, { forOwnerOrStaff: true }));
   }
 
   // Listings staff have taken down — the surface for reviewing/reinstating them.
   @Get('removed')
   async removed(): Promise<PublicListing[]> {
     const listings = await this.listings.findRemovedQueue();
-    return listings.map((listing) => this.listings.toPublic(listing));
+    return listings.map((listing) => this.listings.toPublic(listing, { forOwnerOrStaff: true }));
   }
 
   @Post(':caseId/approve')
   async approve(@Param('caseId') caseId: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.approve(user.id, caseId);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   @Post(':caseId/reject')
@@ -48,7 +48,7 @@ export class ModerationController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.reject(user.id, caseId, body.reason);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Take a live listing down (MOD-3). Requires a reason for the audit trail.
@@ -59,13 +59,13 @@ export class ModerationController {
     @CurrentUser() user: PublicUser,
   ): Promise<PublicListing> {
     const listing = await this.listings.takedown(user.id, caseId, body.reason);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
   // Undo a takedown — return the listing to the public catalog (MOD-3).
   @Post(':caseId/reinstate')
   async reinstate(@Param('caseId') caseId: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.reinstate(user.id, caseId);
-    return this.listings.toPublic(listing);
+    return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 }
