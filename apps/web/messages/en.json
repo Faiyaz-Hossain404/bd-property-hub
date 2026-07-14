@@ -298,6 +298,10 @@
         "rent": "Rent",
         "shared_ownership": "Shared ownership"
       }
+    },
+    "adminCta": {
+      "title": "Admin dashboard",
+      "subtitle": "Analytics, user management, and the review queues."
     }
   },
   "catalog": {
@@ -409,5 +413,102 @@
     "statDistrictsLabel": "Districts covered",
     "statVerifiedLabel": "Documents verified",
     "statDivisionsLabel": "Divisions served"
+  },
+  "admin": {
+    "brand": "BD Property Hub",
+    "roleAdmin": "Admin",
+    "roleSuperAdmin": "Super admin",
+    "backToDashboard": "Back to dashboard",
+    "navLabel": "Admin sections",
+    "nav": {
+      "overview": "Overview",
+      "users": "Users",
+      "moderation": "Moderation",
+      "sellers": "Sellers"
+    },
+    "loading": "Loading…",
+    "notAuthorized": "Redirecting…",
+    "errorTitle": "Something went wrong",
+    "errorBody": "We couldn't load the admin dashboard. Please try again.",
+    "retry": "Try again",
+    "statsError": "Couldn't load analytics. Please try again.",
+    "overviewTitle": "Overview",
+    "overviewSubtitle": "A live snapshot of users, listings, and the review queues.",
+    "totals": {
+      "users": "Total users",
+      "listings": "Total listings",
+      "approvedListings": "Approved (live)",
+      "pendingModeration": "Pending review",
+      "pendingSellerVerification": "Sellers awaiting verification",
+      "removedListings": "Removed listings"
+    },
+    "charts": {
+      "signupsTrend": "New signups",
+      "listingsTrend": "New listings",
+      "trendWindow": "Last 30 days",
+      "listingsByStatus": "Listings by status",
+      "usersByRole": "Users by role",
+      "listingsByAssetType": "Listings by property type",
+      "listingsByTransactionType": "Listings by transaction",
+      "visitorsComingSoon": "Website visitor analytics arrives with first-party event tracking."
+    },
+    "breakdown": {
+      "role": {
+        "super_admin": "Super admin",
+        "admin": "Admin",
+        "customer_support": "Support",
+        "seller": "Seller",
+        "buyer": "Buyer"
+      },
+      "userStatus": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "pending_verification": "Pending",
+        "deleted": "Deleted"
+      },
+      "listingStatus": {
+        "draft": "Draft",
+        "pending_review": "Pending review",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "archived": "Archived",
+        "removed": "Removed"
+      },
+      "assetType": {
+        "apartment": "Apartment",
+        "land": "Land",
+        "building": "Building",
+        "warehouse": "Warehouse",
+        "factory": "Factory"
+      },
+      "transactionType": {
+        "sale": "Sale",
+        "rent": "Rent",
+        "shared_ownership": "Group buy"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "subtitle": "Search accounts, manage access, and assign roles.",
+      "searchPlaceholder": "Search name or email",
+      "searchCta": "Search",
+      "filterRole": "Filter by role",
+      "filterStatus": "Filter by status",
+      "allRoles": "All roles",
+      "allStatuses": "All statuses",
+      "loadError": "Couldn't load users. Please try again.",
+      "empty": "No users match these filters.",
+      "loadMore": "Load more",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "editRoles": "Edit roles",
+      "editRolesTitle": "Assign roles",
+      "saveRoles": "Save roles",
+      "cancel": "Cancel",
+      "rolesRequired": "Select at least one role.",
+      "actionError": "That action didn't go through. Please try again.",
+      "notSelf": "You can't change your own account here.",
+      "youBadge": "This is you"
+    }
   }
 }

@@ -14,6 +14,7 @@ import { ListingsModule } from './listings/listings.module';
 import { SavedListingsModule } from './saved/saved-listings.module';
 import { SellerVerificationModule } from './seller-verification/seller-verification.module';
 import { GeoModule } from './geo/geo.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { GeoModule } from './geo/geo.module';
     SavedListingsModule,
     SellerVerificationModule,
     GeoModule,
+    AdminModule,
   ],
   // Apply the rate limiter to every route by default. Individual routes opt out
   // with @SkipThrottle() (health checks) or tighten with @Throttle() (auth).

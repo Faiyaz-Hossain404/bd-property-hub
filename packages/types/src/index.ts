@@ -658,3 +658,94 @@ export const resetPasswordInputSchema = z.object({
   password: z.string().min(8).max(128),
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
+
+// --- Admin dashboard (FR-A1/A2/A3) ------------------------------------------
+// The analytics dashboard is aggregate-only (USER_ROLES.md §6): counts and
+// time-series, never individual PII beyond what the users table already exposes.
+// Every field below is computed server-side from data that exists today
+// (listings, users, the moderation/verification queues). Visitor analytics
+// (FR-A3) needs the first-party event pipeline (A10) and is a later increment —
+// it is deliberately absent here rather than faked.
+
+// A named bucket in a categorical breakdown (e.g. one publication status, one
+// role). `key` is the raw enum value; the client localizes the label.
+export interface AdminBreakdownBucket {
+  key: string;
+  count: number;
+}
+
+// One day in a 30-day time series. `date` is an ISO calendar day (YYYY-MM-DD, UTC)
+// so the client can render/localize it; every day in the window is present
+// (zero-filled) so the chart has no gaps.
+export interface AdminDailyPoint {
+  date: string;
+  count: number;
+}
+
+// How many trailing days the dashboard time-series charts cover.
+export const ADMIN_TRENDS_WINDOW_DAYS = 30;
+
+// The full analytics payload behind GET /admin/stats.
+export interface AdminStats {
+  // Headline totals for the stat cards.
+  totals: {
+    users: number;
+    listings: number;
+    approvedListings: number;
+    pendingModeration: number;
+    pendingSellerVerification: number;
+    removedListings: number;
+  };
+  // Categorical breakdowns for the bar/pie charts.
+  usersByRole: AdminBreakdownBucket[];
+  usersByStatus: AdminBreakdownBucket[];
+  listingsByStatus: AdminBreakdownBucket[];
+  listingsByAssetType: AdminBreakdownBucket[];
+  listingsByTransactionType: AdminBreakdownBucket[];
+  // New signups / new listings per day over the trailing window.
+  signupsTrend: AdminDailyPoint[];
+  listingsTrend: AdminDailyPoint[];
+}
+
+// --- Admin user management (FR-A1, user.suspend, staff.assign_role) ---------
+// The set of statuses an admin can move an account to through the users table.
+// Intentionally narrower than USER_STATUSES: 'deleted' is a separate destructive
+// flow, and 'pending_verification' is owned by the email-verification lifecycle,
+// not a manual admin toggle.
+export const ADMIN_SETTABLE_USER_STATUSES = ['active', 'suspended'] as const;
+export type AdminSettableUserStatus = (typeof ADMIN_SETTABLE_USER_STATUSES)[number];
+
+export const ADMIN_USERS_PAGE_LIMIT_DEFAULT = 20;
+export const ADMIN_USERS_PAGE_LIMIT_MAX = 100;
+
+// Query for the admin users list. Free-text `q` matches name/email (escaped
+// server-side); `role`/`status` narrow the list; `cursor` is the opaque keyset
+// token from the previous page. All optional — the bare call lists newest first.
+export const adminUsersQuerySchema = z.object({
+  q: z.string().trim().min(1).max(200).optional(),
+  role: z.enum(ROLES).optional(),
+  status: z.enum(USER_STATUSES).optional(),
+  cursor: z.string().min(1).max(512).optional(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(ADMIN_USERS_PAGE_LIMIT_MAX)
+    .default(ADMIN_USERS_PAGE_LIMIT_DEFAULT),
+});
+export type AdminUsersQuery = z.infer<typeof adminUsersQuerySchema>;
+
+// Suspend / reactivate an account. The service enforces the privilege rules
+// (can't act on yourself, admins can't touch staff — see admin-users.service.ts).
+export const adminUpdateUserStatusInputSchema = z.object({
+  status: z.enum(ADMIN_SETTABLE_USER_STATUSES),
+});
+export type AdminUpdateUserStatusInput = z.infer<typeof adminUpdateUserStatusInputSchema>;
+
+// Replace an account's roles (super_admin only). At least one role is required;
+// duplicates are collapsed server-side. The service blocks a super admin from
+// changing their own roles (no self-lockout / self-demotion of the last admin).
+export const adminAssignRolesInputSchema = z.object({
+  roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+});
+export type AdminAssignRolesInput = z.infer<typeof adminAssignRolesInputSchema>;

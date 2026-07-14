@@ -298,6 +298,10 @@
         "rent": "ভাড়া",
         "shared_ownership": "যৌথ মালিকানা"
       }
+    },
+    "adminCta": {
+      "title": "অ্যাডমিন ড্যাশবোর্ড",
+      "subtitle": "বিশ্লেষণ, ব্যবহারকারী ব্যবস্থাপনা এবং রিভিউ সারি।"
     }
   },
   "catalog": {
@@ -409,5 +413,102 @@
     "statDistrictsLabel": "জেলা কভারেজ",
     "statVerifiedLabel": "কাগজপত্র যাচাইকৃত",
     "statDivisionsLabel": "বিভাগ অন্তর্ভুক্ত"
+  },
+  "admin": {
+    "brand": "বিডি প্রপার্টি হাব",
+    "roleAdmin": "অ্যাডমিন",
+    "roleSuperAdmin": "সুপার অ্যাডমিন",
+    "backToDashboard": "ড্যাশবোর্ডে ফিরুন",
+    "navLabel": "অ্যাডমিন বিভাগ",
+    "nav": {
+      "overview": "সারসংক্ষেপ",
+      "users": "ব্যবহারকারী",
+      "moderation": "মডারেশন",
+      "sellers": "বিক্রেতা"
+    },
+    "loading": "লোড হচ্ছে…",
+    "notAuthorized": "রিডাইরেক্ট হচ্ছে…",
+    "errorTitle": "কিছু একটা সমস্যা হয়েছে",
+    "errorBody": "অ্যাডমিন ড্যাশবোর্ড লোড করা যায়নি। আবার চেষ্টা করুন।",
+    "retry": "আবার চেষ্টা করুন",
+    "statsError": "বিশ্লেষণ লোড করা যায়নি। আবার চেষ্টা করুন।",
+    "overviewTitle": "সারসংক্ষেপ",
+    "overviewSubtitle": "ব্যবহারকারী, লিস্টিং এবং রিভিউ সারির সরাসরি চিত্র।",
+    "totals": {
+      "users": "মোট ব্যবহারকারী",
+      "listings": "মোট লিস্টিং",
+      "approvedListings": "অনুমোদিত (লাইভ)",
+      "pendingModeration": "রিভিউয়ের অপেক্ষায়",
+      "pendingSellerVerification": "যাচাইয়ের অপেক্ষায় বিক্রেতা",
+      "removedListings": "সরানো লিস্টিং"
+    },
+    "charts": {
+      "signupsTrend": "নতুন সাইনআপ",
+      "listingsTrend": "নতুন লিস্টিং",
+      "trendWindow": "গত ৩০ দিন",
+      "listingsByStatus": "স্ট্যাটাস অনুযায়ী লিস্টিং",
+      "usersByRole": "ভূমিকা অনুযায়ী ব্যবহারকারী",
+      "listingsByAssetType": "সম্পত্তির ধরন অনুযায়ী লিস্টিং",
+      "listingsByTransactionType": "লেনদেন অনুযায়ী লিস্টিং",
+      "visitorsComingSoon": "ফার্স্ট-পার্টি ইভেন্ট ট্র্যাকিং যুক্ত হলে ওয়েবসাইট ভিজিটর বিশ্লেষণ আসবে।"
+    },
+    "breakdown": {
+      "role": {
+        "super_admin": "সুপার অ্যাডমিন",
+        "admin": "অ্যাডমিন",
+        "customer_support": "সাপোর্ট",
+        "seller": "বিক্রেতা",
+        "buyer": "ক্রেতা"
+      },
+      "userStatus": {
+        "active": "সক্রিয়",
+        "suspended": "স্থগিত",
+        "pending_verification": "অপেক্ষমাণ",
+        "deleted": "মুছে ফেলা"
+      },
+      "listingStatus": {
+        "draft": "খসড়া",
+        "pending_review": "রিভিউয়ের অপেক্ষায়",
+        "approved": "অনুমোদিত",
+        "rejected": "প্রত্যাখ্যাত",
+        "archived": "আর্কাইভ",
+        "removed": "সরানো"
+      },
+      "assetType": {
+        "apartment": "অ্যাপার্টমেন্ট",
+        "land": "জমি",
+        "building": "ভবন",
+        "warehouse": "গুদাম",
+        "factory": "কারখানা"
+      },
+      "transactionType": {
+        "sale": "বিক্রয়",
+        "rent": "ভাড়া",
+        "shared_ownership": "গ্রুপ ক্রয়"
+      }
+    },
+    "users": {
+      "title": "ব্যবহারকারী",
+      "subtitle": "অ্যাকাউন্ট খুঁজুন, অ্যাক্সেস পরিচালনা করুন এবং ভূমিকা নির্ধারণ করুন।",
+      "searchPlaceholder": "নাম বা ইমেইল খুঁজুন",
+      "searchCta": "খুঁজুন",
+      "filterRole": "ভূমিকা অনুযায়ী ফিল্টার",
+      "filterStatus": "স্ট্যাটাস অনুযায়ী ফিল্টার",
+      "allRoles": "সব ভূমিকা",
+      "allStatuses": "সব স্ট্যাটাস",
+      "loadError": "ব্যবহারকারী লোড করা যায়নি। আবার চেষ্টা করুন।",
+      "empty": "এই ফিল্টারের সাথে কোনো ব্যবহারকারী মেলেনি।",
+      "loadMore": "আরও দেখুন",
+      "suspend": "স্থগিত করুন",
+      "reactivate": "পুনরায় সক্রিয় করুন",
+      "editRoles": "ভূমিকা সম্পাদনা",
+      "editRolesTitle": "ভূমিকা নির্ধারণ",
+      "saveRoles": "ভূমিকা সংরক্ষণ",
+      "cancel": "বাতিল",
+      "rolesRequired": "অন্তত একটি ভূমিকা নির্বাচন করুন।",
+      "actionError": "কাজটি সম্পন্ন হয়নি। আবার চেষ্টা করুন।",
+      "notSelf": "আপনি এখানে নিজের অ্যাকাউন্ট পরিবর্তন করতে পারবেন না।",
+      "youBadge": "এটি আপনি"
+    }
   }
 }

@@ -2,9 +2,11 @@
 
 import type { ReactNode } from "react"
 import { useFormatter, useTranslations } from "next-intl"
+import { ArrowRight, Gauge } from "lucide-react"
 import type { PublicUser, UserStatus } from "@bdph/types"
 
 import { cn } from "@/lib/utils"
+import { Link } from "@/i18n/navigation"
 import {
   Card,
   CardContent,
@@ -18,9 +20,7 @@ import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { LogoutButton } from "@/components/dashboard/logout-button"
 import { ListingsSection } from "@/components/dashboard/listings-section"
 import { SavedSection } from "@/components/dashboard/saved-section"
-import { ModerationSection } from "@/components/dashboard/moderation-section"
 import { SellerVerificationSection } from "@/components/dashboard/seller-verification-section"
-import { SellerVerificationQueue } from "@/components/dashboard/seller-verification-queue"
 
 const MODERATOR_ROLES = ["admin", "super_admin"] as const
 const SELLER_ROLE = "seller"
@@ -112,13 +112,28 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
             </CardContent>
           </Card>
 
+          {isModerator ? (
+            <Link
+              href="/admin"
+              className="group mt-10 flex max-w-2xl items-center justify-between gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground ring-1 ring-foreground/10 transition-colors hover:bg-primary/90"
+            >
+              <span className="flex items-center gap-3">
+                <Gauge className="size-5" />
+                <span>
+                  <span className="block font-heading font-semibold">{t("adminCta.title")}</span>
+                  <span className="block text-sm text-primary-foreground/80">
+                    {t("adminCta.subtitle")}
+                  </span>
+                </span>
+              </span>
+              <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ) : null}
           {isSeller ? (
             <SellerVerificationSection user={user} onUserRefresh={onUserRefresh} />
           ) : null}
           <ListingsSection user={user} onUserRefresh={onUserRefresh} />
           <SavedSection />
-          {isModerator ? <ModerationSection /> : null}
-          {isModerator ? <SellerVerificationQueue /> : null}
         </div>
       </main>
     </div>

@@ -45,7 +45,12 @@ export class SessionService {
     if (!session) return null;
 
     const user = await this.users.findById(session.userId.toString());
-    return user ? this.users.toPublic(user) : null;
+    if (!user) return null;
+    // Suspended/deleted accounts are denied even with a live session cookie, so an
+    // admin suspension takes effect on the account's very next request across every
+    // guarded route — this is the single enforcement chokepoint for user.suspend.
+    if (user.status === 'suspended' || user.status === 'deleted') return null;
+    return this.users.toPublic(user);
   }
 
   async revoke(rawToken: string): Promise<void> {
