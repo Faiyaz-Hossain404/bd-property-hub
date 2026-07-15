@@ -21,6 +21,7 @@ import { ListingsModule } from '../../src/listings/listings.module';
 import { SavedListingsModule } from '../../src/saved/saved-listings.module';
 import { SellerVerificationModule } from '../../src/seller-verification/seller-verification.module';
 import { GeoModule } from '../../src/geo/geo.module';
+import { AdminModule } from '../../src/admin/admin.module';
 
 // Every route resolves under /api/v1 (global prefix + URI versioning, see main.ts).
 export const API = '/api/v1';
@@ -73,6 +74,7 @@ export async function startTestApp(): Promise<TestContext> {
       SavedListingsModule,
       SellerVerificationModule,
       GeoModule,
+      AdminModule,
     ],
   }).compile();
 

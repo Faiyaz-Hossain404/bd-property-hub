@@ -31,6 +31,15 @@ export class LocalAuthProvider implements AuthProvider {
     if (!user?.passwordHash || !(await this.passwords.verify(user.passwordHash, input.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
+    // Deny suspended accounts even with correct credentials so a suspended user
+    // can't simply log back in and mint a fresh session. A 'deleted' account is
+    // reported as invalid credentials so its prior existence isn't confirmed.
+    if (user.status === 'suspended') {
+      throw new UnauthorizedException('This account has been suspended');
+    }
+    if (user.status === 'deleted') {
+      throw new UnauthorizedException('Invalid credentials');
+    }
     return this.users.toPublic(user);
   }
 }

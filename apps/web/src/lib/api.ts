@@ -1,4 +1,7 @@
 import type {
+  AdminAssignRolesInput,
+  AdminStats,
+  AdminUpdateUserStatusInput,
   ApiPage,
   AssetType,
   CommitListingMediaInput,
@@ -18,9 +21,11 @@ import type {
   RegisterInput,
   RejectListingInput,
   RejectSellerVerificationInput,
+  Role,
   TakedownListingInput,
   TransactionType,
   UpdateListingInput,
+  UserStatus,
 } from '@bdph/types';
 
 // The API serves /api/v1/* with credentialed CORS (apps/api/src/main.ts). The
@@ -395,4 +400,50 @@ export function rejectSellerVerification(
   input: RejectSellerVerificationInput,
 ): Promise<PublicUser> {
   return postJson<PublicUser>(`/admin/seller-verification/${userId}/reject`, input);
+}
+
+// --- Admin dashboard (FR-A1/A2/A3) ------------------------------------------
+// All admin routes are role-gated server-side (admin/super_admin); the web only
+// mirrors that to hide the UI. A non-admin who reaches these still gets a 403.
+
+// Aggregate analytics for the overview charts (dashboard.view_analytics).
+export function getAdminStats(): Promise<AdminStats> {
+  return getJson<AdminStats>('/admin/stats');
+}
+
+export type AdminUsersParams = {
+  cursor?: string | null;
+  q?: string | null;
+  role?: Role | null;
+  status?: UserStatus | null;
+  limit?: number | null;
+};
+
+// Paginated user list with optional search + role/status facets. Returns the full
+// `{ data, page }` envelope so the caller can pass `page.nextCursor` back.
+export function getAdminUsers(params: AdminUsersParams): Promise<ApiPage<PublicUser>> {
+  const search = new URLSearchParams();
+  if (params.cursor) search.set('cursor', params.cursor);
+  if (params.q) search.set('q', params.q);
+  if (params.role) search.set('role', params.role);
+  if (params.status) search.set('status', params.status);
+  if (params.limit != null) search.set('limit', String(params.limit));
+  const query = search.toString();
+  return getPage<PublicUser>(`/admin/users${query ? `?${query}` : ''}`);
+}
+
+// Suspend / reactivate an account (user.suspend). Returns the refreshed user.
+export function setAdminUserStatus(
+  userId: string,
+  input: AdminUpdateUserStatusInput,
+): Promise<PublicUser> {
+  return patchJson<PublicUser>(`/admin/users/${userId}/status`, input);
+}
+
+// Replace an account's roles (super_admin only, staff.assign_role).
+export function setAdminUserRoles(
+  userId: string,
+  input: AdminAssignRolesInput,
+): Promise<PublicUser> {
+  return patchJson<PublicUser>(`/admin/users/${userId}/roles`, input);
 }
