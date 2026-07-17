@@ -30,12 +30,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const SELECT_CLASS =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // A whole, non-negative integer amount of taka (or empty for "not set").
 const WHOLE_NUMBER = /^\d+$/
+// Radix Select rejects an empty-string item value, so "not chosen yet" is
+// represented by this sentinel and translated back to "" at the boundary.
+const UNSET = "__unset__"
 
 type EditorT = ReturnType<typeof useTranslations>
 
@@ -234,96 +235,111 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor={`division-${listing.id}`}>{t("divisionLabel")}</Label>
-          <select
-            id={`division-${listing.id}`}
-            value={divisionId}
-            onChange={(event) => handleDivisionChange(event.target.value)}
-            className={SELECT_CLASS}
+          <Select
+            value={divisionId || UNSET}
+            onValueChange={(next) => handleDivisionChange(next === UNSET ? "" : next)}
           >
-            <option value="">{t("divisionPlaceholder")}</option>
-            {divisions.map((division) => (
-              <option key={division.id} value={division.id}>
-                {locale === "bn" ? division.nameBn : division.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`division-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("divisionPlaceholder")}</SelectItem>
+              {divisions.map((division) => (
+                <SelectItem key={division.id} value={division.id}>
+                  {locale === "bn" ? division.nameBn : division.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor={`district-${listing.id}`}>{t("districtLabel")}</Label>
-          <select
-            id={`district-${listing.id}`}
-            value={districtId}
-            onChange={(event) => handleDistrictChange(event.target.value)}
+          <Select
+            value={districtId || UNSET}
+            onValueChange={(next) => handleDistrictChange(next === UNSET ? "" : next)}
             disabled={!divisionId}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("districtPlaceholder")}</option>
-            {districts.map((district) => (
-              <option key={district.id} value={district.id}>
-                {locale === "bn" ? district.nameBn : district.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`district-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("districtPlaceholder")}</SelectItem>
+              {districts.map((district) => (
+                <SelectItem key={district.id} value={district.id}>
+                  {locale === "bn" ? district.nameBn : district.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor={`upazila-${listing.id}`}>{t("cityUpazilaLabel")}</Label>
-          <select
-            id={`upazila-${listing.id}`}
-            value={cityUpazilaId}
-            onChange={(event) => handleUpazilaChange(event.target.value)}
+          <Select
+            value={cityUpazilaId || UNSET}
+            onValueChange={(next) => handleUpazilaChange(next === UNSET ? "" : next)}
             disabled={!districtId}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("cityUpazilaPlaceholder")}</option>
-            {citiesUpazilas.map((row) => (
-              <option key={row.id} value={row.id}>
-                {locale === "bn" ? row.nameBn : row.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`upazila-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("cityUpazilaPlaceholder")}</SelectItem>
+              {citiesUpazilas.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {locale === "bn" ? row.nameBn : row.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor={`area-${listing.id}`}>{t("areaThanaLabel")}</Label>
-          <select
-            id={`area-${listing.id}`}
-            value={areaThanaId}
-            onChange={(event) => {
-              setAreaThanaId(event.target.value)
+          <Select
+            value={areaThanaId || UNSET}
+            onValueChange={(next) => {
+              setAreaThanaId(next === UNSET ? "" : next)
               setIsSaved(false)
             }}
             disabled={!cityUpazilaId}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("areaThanaPlaceholder")}</option>
-            {areasThanas.map((row) => (
-              <option key={row.id} value={row.id}>
-                {locale === "bn" ? row.nameBn : row.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`area-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("areaThanaPlaceholder")}</SelectItem>
+              {areasThanas.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {locale === "bn" ? row.nameBn : row.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor={`cityCorporation-${listing.id}`}>{t("cityCorporationLabel")}</Label>
-          <select
-            id={`cityCorporation-${listing.id}`}
-            value={cityCorporationId}
-            onChange={(event) => {
-              setCityCorporationId(event.target.value)
+          <Select
+            value={cityCorporationId || UNSET}
+            onValueChange={(next) => {
+              setCityCorporationId(next === UNSET ? "" : next)
               setIsSaved(false)
             }}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("cityCorporationPlaceholder")}</option>
-            {cityCorporations.map((row) => (
-              <option key={row.id} value={row.id}>
-                {locale === "bn" ? row.nameBn : row.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`cityCorporation-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("cityCorporationPlaceholder")}</SelectItem>
+              {cityCorporations.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {locale === "bn" ? row.nameBn : row.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -346,41 +362,47 @@ export function ListingEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`priceType-${listing.id}`}>{t("priceTypeLabel")}</Label>
-          <select
-            id={`priceType-${listing.id}`}
+          <Select
             value={priceType}
-            onChange={(event) => {
-              setPriceType(event.target.value as PriceType)
+            onValueChange={(value) => {
+              setPriceType(value as PriceType)
               setIsSaved(false)
             }}
-            className={SELECT_CLASS}
           >
-            {PRICE_TYPES.map((value) => (
-              <option key={value} value={value}>
-                {t(`priceTypes.${value}`)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`priceType-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PRICE_TYPES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(`priceTypes.${value}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {isRent ? (
           <div className="grid gap-1.5">
             <Label htmlFor={`rentPeriod-${listing.id}`}>{t("rentPeriodLabel")}</Label>
-            <select
-              id={`rentPeriod-${listing.id}`}
+            <Select
               value={rentPeriod}
-              onChange={(event) => {
-                setRentPeriod(event.target.value as RentPeriod)
+              onValueChange={(value) => {
+                setRentPeriod(value as RentPeriod)
                 setIsSaved(false)
               }}
-              className={SELECT_CLASS}
             >
-              {RENT_PERIODS.map((value) => (
-                <option key={value} value={value}>
-                  {t(`rentPeriods.${value}`)}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id={`rentPeriod-${listing.id}`} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RENT_PERIODS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`rentPeriods.${value}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : null}
       </div>

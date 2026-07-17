@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ListingPhotos } from "./listing-photos"
 import { ListingEditor } from "./listing-editor"
 import { ListingPinEditor } from "./listing-pin-editor"
@@ -185,34 +186,37 @@ function DraftWorkspace({ t, kycVerified }: { t: SectionT; kycVerified: boolean 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="assetType">{t("assetTypeLabel")}</Label>
-              <select
-                id="assetType"
-                value={assetType}
-                onChange={(event) => setAssetType(event.target.value as AssetType)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              >
-                {ASSET_TYPES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`assetTypes.${value}`)}
-                  </option>
-                ))}
-              </select>
+              <Select value={assetType} onValueChange={(value) => setAssetType(value as AssetType)}>
+                <SelectTrigger id="assetType" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSET_TYPES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`assetTypes.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="transactionType">{t("transactionTypeLabel")}</Label>
-              <select
-                id="transactionType"
+              <Select
                 value={transactionType}
-                onChange={(event) => setTransactionType(event.target.value as TransactionType)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                onValueChange={(value) => setTransactionType(value as TransactionType)}
               >
-                {TRANSACTION_TYPES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`transactionTypes.${value}`)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="transactionType" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSACTION_TYPES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`transactionTypes.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
