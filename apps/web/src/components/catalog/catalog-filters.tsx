@@ -14,12 +14,22 @@ import { getCitiesUpazilas, getDistricts, getDivisions } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { CatalogFilterValue } from "./catalog-filters.types"
 
-const SELECT_CLASS =
-  "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 // Whole BDT, no decimals/commas — matches the listing editor's price input.
 const WHOLE_NUMBER = /^\d+$/
+// Radix Select rejects an empty-string item value, so "no filter applied" is
+// represented by this sentinel and translated back to "" at the boundary.
+const ALL_VALUE = "__all__"
 
 type Props = {
   value: CatalogFilterValue
@@ -35,9 +45,9 @@ type DivisionGroup = { division: GeoDivision; districts: GeoDistrict[] }
 // the URL changes elsewhere (e.g. browser back), so the controls always reflect
 // the active query.
 //
-// District is one flat <select> grouped by division via <optgroup>: we fetch all
-// Zillas once (the editor uses a division→district cascade, but a single grouped
-// list keeps the URL to just district_id and reconstructs a shared link without
+// District is one flat Select grouped by division: we fetch all Zillas once
+// (the editor uses a division→district cascade, but a single grouped list
+// keeps the URL to just district_id and reconstructs a shared link without
 // extra state). The few-dozen-district list is small enough to render whole.
 export function CatalogFilters({ value, onApply }: Props) {
   const t = useTranslations("catalog")
@@ -205,79 +215,95 @@ export function CatalogFilters({ value, onApply }: Props) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="grid gap-1.5">
           <Label htmlFor="filter-district">{t("filters.district")}</Label>
-          <select
-            id="filter-district"
-            value={districtId}
-            onChange={(event) => handleDistrictChange(event.target.value)}
+          <Select
+            value={districtId || ALL_VALUE}
+            onValueChange={(next) => handleDistrictChange(next === ALL_VALUE ? "" : next)}
             disabled={geoError}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("filters.all")}</option>
-            {districtGroups.map((group) => (
-              <optgroup
-                key={group.division.id}
-                label={locale === "bn" ? group.division.nameBn : group.division.nameEn}
-              >
-                {group.districts.map((district) => (
-                  <option key={district.id} value={district.id}>
-                    {locale === "bn" ? district.nameBn : district.nameEn}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            <SelectTrigger id="filter-district" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+              {districtGroups.map((group) => (
+                <SelectGroup key={group.division.id}>
+                  <SelectLabel>
+                    {locale === "bn" ? group.division.nameBn : group.division.nameEn}
+                  </SelectLabel>
+                  {group.districts.map((district) => (
+                    <SelectItem key={district.id} value={district.id}>
+                      {locale === "bn" ? district.nameBn : district.nameEn}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor="filter-city-upazila">{t("filters.cityUpazila")}</Label>
-          <select
-            id="filter-city-upazila"
-            value={cityUpazilaId}
-            onChange={(event) => setCityUpazilaId(event.target.value)}
+          <Select
+            value={cityUpazilaId || ALL_VALUE}
+            onValueChange={(next) => setCityUpazilaId(next === ALL_VALUE ? "" : next)}
             disabled={geoError || !districtId}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("filters.all")}</option>
-            {citiesUpazilas.map((row) => (
-              <option key={row.id} value={row.id}>
-                {locale === "bn" ? row.nameBn : row.nameEn}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="filter-city-upazila" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+              {citiesUpazilas.map((row) => (
+                <SelectItem key={row.id} value={row.id}>
+                  {locale === "bn" ? row.nameBn : row.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor="filter-transaction-type">{t("filters.transactionType")}</Label>
-          <select
-            id="filter-transaction-type"
-            value={transactionType}
-            onChange={(event) => setTransactionType(event.target.value as typeof transactionType)}
-            className={SELECT_CLASS}
+          <Select
+            value={transactionType || ALL_VALUE}
+            onValueChange={(next) =>
+              setTransactionType((next === ALL_VALUE ? "" : next) as typeof transactionType)
+            }
           >
-            <option value="">{t("filters.all")}</option>
-            {TRANSACTION_TYPES.map((option) => (
-              <option key={option} value={option}>
-                {t(`transactionTypes.${option}`)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="filter-transaction-type" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+              {TRANSACTION_TYPES.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(`transactionTypes.${option}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
           <Label htmlFor="filter-asset-type">{t("filters.assetType")}</Label>
-          <select
-            id="filter-asset-type"
-            value={assetType}
-            onChange={(event) => setAssetType(event.target.value as typeof assetType)}
-            className={SELECT_CLASS}
+          <Select
+            value={assetType || ALL_VALUE}
+            onValueChange={(next) =>
+              setAssetType((next === ALL_VALUE ? "" : next) as typeof assetType)
+            }
           >
-            <option value="">{t("filters.all")}</option>
-            {ASSET_TYPES.map((option) => (
-              <option key={option} value={option}>
-                {t(`assetTypes.${option}`)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="filter-asset-type" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+              {ASSET_TYPES.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(`assetTypes.${option}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">

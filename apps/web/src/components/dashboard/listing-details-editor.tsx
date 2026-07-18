@@ -16,9 +16,8 @@ import { ApiError, updateListing } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const SELECT_CLASS =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 const TEXTAREA_CLASS =
   "min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
 
@@ -26,6 +25,9 @@ const TEXTAREA_CLASS =
 const WHOLE_NUMBER = /^\d+$/
 // Non-negative amount, optionally with a decimal part (area, land size).
 const DECIMAL_NUMBER = /^\d+(\.\d+)?$/
+// Radix Select rejects an empty-string item value, so "not set" is
+// represented by this sentinel and translated back to "" at the boundary.
+const UNSET = "__unset__"
 
 type EditorT = ReturnType<typeof useTranslations>
 
@@ -163,22 +165,25 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`facing-${listing.id}`}>{t("facingLabel")}</Label>
-          <select
-            id={`facing-${listing.id}`}
-            value={facing}
-            onChange={(event) => {
-              setFacing(event.target.value as Facing | "")
+          <Select
+            value={facing || UNSET}
+            onValueChange={(value) => {
+              setFacing(value === UNSET ? "" : (value as Facing))
               markDirty()
             }}
-            className={SELECT_CLASS}
           >
-            <option value="">{t("facingUnset")}</option>
-            {FACINGS.map((value) => (
-              <option key={value} value={value}>
-                {t(`facings.${value}`)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`facing-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNSET}>{t("facingUnset")}</SelectItem>
+              {FACINGS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(`facings.${value}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-1.5">
@@ -196,21 +201,24 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`landSizeUnit-${listing.id}`}>{t("landSizeUnitLabel")}</Label>
-          <select
-            id={`landSizeUnit-${listing.id}`}
+          <Select
             value={landSizeUnit}
-            onChange={(event) => {
-              setLandSizeUnit(event.target.value as LandSizeUnit)
+            onValueChange={(value) => {
+              setLandSizeUnit(value as LandSizeUnit)
               markDirty()
             }}
-            className={SELECT_CLASS}
           >
-            {LAND_SIZE_UNITS.map((value) => (
-              <option key={value} value={value}>
-                {t(`landUnits.${value}`)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id={`landSizeUnit-${listing.id}`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LAND_SIZE_UNITS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(`landUnits.${value}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

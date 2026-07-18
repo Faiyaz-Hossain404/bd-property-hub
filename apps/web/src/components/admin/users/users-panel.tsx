@@ -16,11 +16,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type PanelT = ReturnType<typeof useTranslations>
 
 const STAFF_ROLES: readonly Role[] = ["super_admin", "admin", "customer_support"]
 const isStaff = (user: PublicUser) => user.roles.some((r) => STAFF_ROLES.includes(r))
+
+// Radix Select rejects an empty-string item value, so "no filter applied" is
+// represented by this sentinel and translated back to "" at the boundary.
+const ALL_VALUE = "__all__"
 
 function statusVariant(status: UserStatus): "default" | "outline" | "destructive" {
   if (status === "active") return "default"
@@ -28,28 +39,36 @@ function statusVariant(status: UserStatus): "default" | "outline" | "destructive
   return "outline"
 }
 
-// A styled native select — the project has no Select primitive yet, and a native
-// control keeps this keyboard/screen-reader friendly for free.
 function Filter({
   value,
   onChange,
-  children,
+  options,
+  allLabel,
   label,
 }: {
   value: string
   onChange: (v: string) => void
-  children: React.ReactNode
+  options: { value: string; label: string }[]
+  allLabel: string
   label: string
 }) {
   return (
-    <select
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+    <Select
+      value={value || ALL_VALUE}
+      onValueChange={(next) => onChange(next === ALL_VALUE ? "" : next)}
     >
-      {children}
-    </select>
+      <SelectTrigger aria-label={label} className="w-36">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_VALUE}>{allLabel}</SelectItem>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -150,26 +169,19 @@ export function UsersPanel() {
           label={t("users.filterRole")}
           value={filters.role}
           onChange={(role) => setFilters((prev) => ({ ...prev, role }))}
-        >
-          <option value="">{t("users.allRoles")}</option>
-          {ROLES.map((role) => (
-            <option key={role} value={role}>
-              {t(`breakdown.role.${role}`)}
-            </option>
-          ))}
-        </Filter>
+          allLabel={t("users.allRoles")}
+          options={ROLES.map((role) => ({ value: role, label: t(`breakdown.role.${role}`) }))}
+        />
         <Filter
           label={t("users.filterStatus")}
           value={filters.status}
           onChange={(status) => setFilters((prev) => ({ ...prev, status }))}
-        >
-          <option value="">{t("users.allStatuses")}</option>
-          {USER_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {t(`breakdown.userStatus.${status}`)}
-            </option>
-          ))}
-        </Filter>
+          allLabel={t("users.allStatuses")}
+          options={USER_STATUSES.map((status) => ({
+            value: status,
+            label: t(`breakdown.userStatus.${status}`),
+          }))}
+        />
       </div>
 
       <Card className="gap-0 p-0">

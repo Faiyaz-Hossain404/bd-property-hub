@@ -14,12 +14,10 @@ import {
 } from "@bdph/types"
 import { usePathname, useRouter } from "@/i18n/navigation"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CatalogFilters } from "./catalog-filters"
 import { CatalogBrowser } from "./catalog-browser"
 import type { CatalogFilterValue } from "./catalog-filters.types"
-
-const SORT_SELECT_CLASS =
-  "h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 
 // The URL is the single source of truth for the active facets and sort (web rule:
 // shareable state lives in the query string). This wrapper reads them via
@@ -104,18 +102,18 @@ export function CatalogView() {
         <Label htmlFor="catalog-sort" className="text-muted-foreground">
           {t("sort.label")}
         </Label>
-        <select
-          id="catalog-sort"
-          value={filters.sort}
-          onChange={(event) => handleSortChange(event.target.value as ListingSort)}
-          className={SORT_SELECT_CLASS}
-        >
-          {LISTING_SORTS.map((option) => (
-            <option key={option} value={option}>
-              {t(`sort.${option}`)}
-            </option>
-          ))}
-        </select>
+        <Select value={filters.sort} onValueChange={(next) => handleSortChange(next as ListingSort)}>
+          <SelectTrigger id="catalog-sort" className="h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LISTING_SORTS.map((option) => (
+              <SelectItem key={option} value={option}>
+                {t(`sort.${option}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <CatalogBrowser filters={filters} />
     </>
