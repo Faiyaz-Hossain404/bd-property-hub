@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
@@ -28,6 +29,7 @@ import {
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CurrentUser } from './current-user.decorator';
 import { LocalAuthProvider } from './local-auth.provider';
+import { ClerkAuthProvider } from './clerk/clerk-auth.provider';
 import { AccountFlowsService } from './account-flows.service';
 import { SESSION_COOKIE, SessionService } from './session.service';
 import { SessionAuthGuard } from './session-auth.guard';
@@ -46,12 +48,15 @@ function sessionCookieOptions(maxAgeSeconds?: number): CookieOptions {
   };
 }
 
-// First-party (manual) auth. Clerk authenticates via webhook sync + JWT verify
-// rather than these routes; both resolve to the same canonical user and session.
+// Auth endpoints. The register/login routes are first-party (email/password).
+// The Clerk path runs client-side, then exchanges its session token for our own
+// cookie at POST /auth/clerk/session; both resolve to the same canonical user and
+// the same bdph_session cookie, so everything downstream is identical.
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly local: LocalAuthProvider,
+    private readonly clerkAuth: ClerkAuthProvider,
     private readonly sessions: SessionService,
     private readonly accounts: AccountFlowsService,
   ) {}
@@ -81,6 +86,27 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<PublicUser> {
     const user = await this.local.login(body);
+    await this.startSession(user, req, res);
+    return user;
+  }
+
+  // Clerk session bridge: the client authenticates with Clerk, then posts its
+  // Clerk session token here (Authorization: Bearer). We verify it, resolve/link
+  // the canonical user, and mint our own session cookie — identical to what login
+  // does — so /auth/me, the guards, and the client all behave the same afterward.
+  @Post('clerk/session')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  async clerkSession(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<PublicUser> {
+    const header = req.headers.authorization ?? '';
+    const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
+    if (!token) {
+      throw new UnauthorizedException('Missing Clerk session token');
+    }
+    const user = await this.clerkAuth.authenticate(token);
     await this.startSession(user, req, res);
     return user;
   }

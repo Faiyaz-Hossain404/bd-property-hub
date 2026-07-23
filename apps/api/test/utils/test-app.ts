@@ -78,7 +78,12 @@ export async function startTestApp(): Promise<TestContext> {
     ],
   }).compile();
 
-  const app = moduleRef.createNestApplication<NestExpressApplication>({ logger: ['error'] });
+  // rawBody mirrors main.ts so the Clerk webhook can read req.rawBody for Svix
+  // signature verification; harmless for every other route.
+  const app = moduleRef.createNestApplication<NestExpressApplication>({
+    logger: ['error'],
+    rawBody: true,
+  });
   app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
