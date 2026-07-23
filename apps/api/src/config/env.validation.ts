@@ -35,6 +35,12 @@ const envSchema = z
     // dev and dropped in production instead of sent.
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default('BD Property Hub <no-reply@bdpropertyhub.test>'),
+    // Clerk auth (ClerkAuthProvider). All optional: with them unset the Clerk
+    // bridge/webhook answer 503 and first-party email/password auth still works,
+    // so the app boots without Clerk configured. Set all three to enable Clerk.
+    CLERK_SECRET_KEY: z.string().optional(),
+    CLERK_WEBHOOK_SECRET: z.string().optional(),
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
   })
   .passthrough();
 

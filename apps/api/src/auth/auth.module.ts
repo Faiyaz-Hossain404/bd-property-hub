@@ -5,6 +5,9 @@ import { EmailModule } from '../email/email.module';
 import { AuthController } from './auth.controller';
 import { MeController } from './me.controller';
 import { LocalAuthProvider } from './local-auth.provider';
+import { ClerkService } from './clerk/clerk.service';
+import { ClerkAuthProvider } from './clerk/clerk-auth.provider';
+import { ClerkWebhookController } from './clerk/clerk-webhook.controller';
 import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
 import { SessionAuthGuard } from './session-auth.guard';
@@ -22,10 +25,12 @@ import { AuthToken, AuthTokenSchema } from './schemas/auth-token.schema';
       { name: AuthToken.name, schema: AuthTokenSchema },
     ]),
   ],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, ClerkWebhookController],
   providers: [
     PasswordService,
     LocalAuthProvider,
+    ClerkService,
+    ClerkAuthProvider,
     SessionService,
     SessionAuthGuard,
     AuthTokenService,

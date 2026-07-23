@@ -36,7 +36,10 @@ function resolveTrustProxy(raw: string | undefined): boolean | number | string {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody keeps the unparsed request bytes on req.rawBody (alongside the parsed
+  // body) so the Clerk webhook can verify its Svix signature over the exact
+  // payload. Harmless for every other route.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
   // Must be set for IP rate limiting to see the real client IP behind a proxy.
   app.set('trust proxy', resolveTrustProxy(process.env.TRUST_PROXY));
