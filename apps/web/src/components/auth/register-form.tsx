@@ -1,34 +1,66 @@
 "use client"
 
 import { useState, useTransition, type FormEvent } from "react"
-import { useLocale, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
+import { useSignUp, useAuth } from "@clerk/nextjs"
 import { Eye, EyeOff, LoaderCircle } from "lucide-react"
 
-import { registerInputSchema, SUPPORTED_LOCALES, type Locale } from "@bdph/types"
+import { registerInputSchema } from "@bdph/types"
 import { useRouter } from "@/i18n/navigation"
-import { ApiError, registerUser } from "@/lib/api"
+import { ApiError, bridgeClerkSession } from "@/lib/api"
+import { clerkErrorCode } from "@/lib/clerk-errors"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { FieldShell } from "@/components/auth/field-shell"
 
 type FieldErrors = Partial<Record<"name" | "email" | "password", string>>
+type Step = "details" | "verify"
 
-// Narrow the next-intl locale string to the schema's union; fall back to the
-// schema default if an unexpected value ever appears.
-function asLocale(value: string): Locale {
-  return (SUPPORTED_LOCALES as readonly string[]).includes(value) ? (value as Locale) : "en"
-}
-
+// Sign-up with Clerk's headless hook. Step 1 collects name/email/password and
+// starts a Clerk sign-up + emails a code; step 2 confirms the code, then bridges
+// to our own session cookie. The details-step card UI matches the first-party
+// version this replaced — only the submit path and the added code step are new.
 export function RegisterForm() {
   const t = useTranslations("auth")
-  const locale = useLocale()
   const router = useRouter()
+  const { signUp } = useSignUp()
+  const { getToken } = useAuth()
   const [isPending, startTransition] = useTransition()
+
+  const [step, setStep] = useState<Step>("details")
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const [codeError, setCodeError] = useState<string | undefined>(undefined)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  // Finalize the Clerk session, exchange it for our cookie, then go to dashboard.
+  async function completeAndBridge(): Promise<void> {
+    if (!signUp) return
+    const { error } = await signUp.finalize({ navigate: async () => {} })
+    if (error) {
+      setFormError(t("errorUnexpected"))
+      return
+    }
+    const token = await getToken()
+    if (!token) {
+      setFormError(t("errorUnexpected"))
+      return
+    }
+    await bridgeClerkSession(token)
+    router.replace("/dashboard")
+    router.refresh()
+  }
+
+  function mapCreateError(error: unknown): string {
+    const code = clerkErrorCode(error)
+    if (code === "form_identifier_exists") return t("errorEmailExists")
+    if (code === "form_param_format_invalid") return t("errorEmailInvalid")
+    if (code?.startsWith("form_password")) return t("errorPasswordShort")
+    return t("errorUnexpected")
+  }
+
+  function handleDetailsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
 
@@ -38,7 +70,6 @@ export function RegisterForm() {
       name: String(data.get("name") ?? "").trim(),
       email: String(data.get("email") ?? "").trim(),
       password,
-      locale: asLocale(locale),
     })
 
     if (!parsed.success) {
@@ -56,33 +87,133 @@ export function RegisterForm() {
     }
     setFieldErrors({})
 
+    if (!signUp) return
+
     startTransition(async () => {
       try {
-        await registerUser(parsed.data)
-        router.replace("/dashboard")
-        router.refresh()
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 409) {
-          setFieldErrors((prev) => ({ ...prev, email: t("errorEmailExists") }))
-        } else if (error instanceof ApiError && error.status === 0) {
-          setFormError(t("errorNetwork"))
-        } else {
-          setFormError(t("errorUnexpected"))
+        // Carry the entered name into Clerk so the synced account keeps it.
+        const { error } = await signUp.password({
+          emailAddress: parsed.data.email,
+          password: parsed.data.password,
+          firstName: parsed.data.name,
+        })
+        if (error) {
+          setFormError(mapCreateError(error))
+          return
         }
+        const { error: sendError } = await signUp.verifications.sendEmailCode()
+        if (sendError) {
+          setFormError(t("errorUnexpected"))
+          return
+        }
+        setStep("verify")
+      } catch (error) {
+        setFormError(
+          error instanceof ApiError && error.status === 0
+            ? t("errorNetwork")
+            : t("errorUnexpected"),
+        )
       }
     })
   }
 
-  return (
-    <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {formError ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {formError}
+  function handleVerifySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setFormError(null)
+    setCodeError(undefined)
+
+    if (!signUp) return
+    const trimmed = code.trim()
+    if (trimmed.length === 0) {
+      setCodeError(t("errorCodeInvalid"))
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const { error } = await signUp.verifications.verifyEmailCode({ code: trimmed })
+        if (error || signUp.status !== "complete") {
+          setCodeError(t("errorCodeInvalid"))
+          return
+        }
+        await completeAndBridge()
+      } catch (error) {
+        setFormError(
+          error instanceof ApiError && error.status === 0
+            ? t("errorNetwork")
+            : t("errorUnexpected"),
+        )
+      }
+    })
+  }
+
+  function handleResendCode() {
+    if (!signUp) return
+    setFormError(null)
+    startTransition(async () => {
+      const { error } = await signUp.verifications.sendEmailCode()
+      if (error) setFormError(t("errorUnexpected"))
+    })
+  }
+
+  const errorBanner = formError ? (
+    <div
+      role="alert"
+      className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    >
+      {formError}
+    </div>
+  ) : null
+
+  if (step === "verify") {
+    return (
+      <form noValidate onSubmit={handleVerifySubmit} className="flex flex-col gap-5">
+        {errorBanner}
+        <div className="space-y-1">
+          <p className="font-heading text-lg font-semibold text-foreground">
+            {t("verifyCodeTitle")}
+          </p>
+          <p className="text-sm text-muted-foreground">{t("verifyCodeSubtitle")}</p>
         </div>
-      ) : null}
+
+        <FieldShell id="code" label={t("verifyCodeLabel")} error={codeError}>
+          <Input
+            id="code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            // Move focus to the code field when this step appears, so keyboard and
+            // screen-reader users are taken to the new input after step one.
+            autoFocus
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder={t("verifyCodePlaceholder")}
+            aria-invalid={Boolean(codeError)}
+            aria-describedby={codeError ? "code-error" : undefined}
+            className="h-11 tracking-widest"
+          />
+        </FieldShell>
+
+        <Button type="submit" size="lg" className="h-11 w-full" disabled={isPending || !signUp}>
+          {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+          {t("verifyCodeCta")}
+        </Button>
+
+        <button
+          type="button"
+          onClick={handleResendCode}
+          disabled={isPending}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50"
+        >
+          {t("verifyCodeResend")}
+        </button>
+      </form>
+    )
+  }
+
+  return (
+    <form noValidate onSubmit={handleDetailsSubmit} className="flex flex-col gap-5">
+      {errorBanner}
 
       <FieldShell id="name" label={t("nameLabel")} error={fieldErrors.name}>
         <Input
@@ -119,9 +250,7 @@ export function RegisterForm() {
             autoComplete="new-password"
             placeholder={t("passwordPlaceholder")}
             aria-invalid={Boolean(fieldErrors.password)}
-            aria-describedby={
-              fieldErrors.password ? "password-error" : "password-hint"
-            }
+            aria-describedby={fieldErrors.password ? "password-error" : "password-hint"}
             className="h-11 pr-10"
           />
           <button
@@ -140,7 +269,10 @@ export function RegisterForm() {
         ) : null}
       </FieldShell>
 
-      <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={isPending}>
+      {/* Clerk's bot-signup protection (Smart CAPTCHA) mounts here when enabled. */}
+      <div id="clerk-captcha" />
+
+      <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={isPending || !signUp}>
         {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
         {t("registerCta")}
       </Button>

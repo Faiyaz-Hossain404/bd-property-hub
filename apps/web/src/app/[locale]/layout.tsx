@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Inter, Hind_Siliguri } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing, type Locale } from '@/i18n/routing';
@@ -39,10 +40,15 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
-      <body>
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
-      </body>
-    </html>
+    // ClerkProvider supplies the auth context the headless sign-in/up hooks use.
+    // It reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from the env (loaded from the root
+    // .env in next.config). Wraps the whole document so the hooks work everywhere.
+    <ClerkProvider>
+      <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
+        <body>
+          <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

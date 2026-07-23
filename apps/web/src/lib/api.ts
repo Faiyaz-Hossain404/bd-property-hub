@@ -155,6 +155,30 @@ export function loginUser(input: LoginInput): Promise<PublicUser> {
   return postJson<PublicUser>('/auth/login', input);
 }
 
+// Exchange an active Clerk session token for our own session cookie. Sent as a
+// Bearer token; the API verifies it with Clerk, resolves/links the canonical user,
+// and sets the httpOnly bdph_session cookie — after this the app is authenticated
+// exactly as it is after a first-party login. Throws ApiError like the others.
+export async function bridgeClerkSession(clerkToken: string): Promise<PublicUser> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/clerk/session`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${clerkToken}` },
+      // Store the session cookie the API issues.
+      credentials: 'include',
+    });
+  } catch {
+    throw new ApiError('Network request failed', 0);
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(messageFromBody(body, 'Request failed'), response.status);
+  }
+  return (body as { data: PublicUser }).data;
+}
+
 // Resolves the current session's user, or throws ApiError(401) when no valid
 // session cookie is present. Drives the client-side auth guard.
 export function getMe(): Promise<PublicUser> {
