@@ -1,0 +1,81 @@
+# Render Blueprint — reproducible definition of the BD Property Hub API service.
+#
+# This mirrors the live `bdph-api` web service (https://bdph-api.onrender.com).
+# The running service was first created via the Render API; this file lets anyone
+# recreate it from scratch ("New > Blueprint" in the Render dashboard, pointing at
+# this repo) and documents the exact build that works.
+#
+# Secrets are declared with `sync: false` — Render prompts for them in the
+# dashboard and never reads them from this committed file. Only non-secret config
+# is inlined.
+#
+# Notes baked in from getting this to deploy on the free tier:
+#   * Build pnpm via `npm install -g pnpm@9.12.0`, NOT corepack — corepack on
+#     Render's Node 22 fails with "Cannot find matching keyid" (stale signing keys).
+#   * `--prod=false` is required: NODE_ENV=production makes pnpm skip
+#     devDependencies, which drops turbo/nest/tsc and breaks the build.
+#   * The API binds API_PORT (not $PORT), so API_PORT=10000 matches Render's port.
+services:
+  - type: web
+    name: bdph-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/v1/health
+    buildCommand: npm install -g pnpm@9.12.0 && pnpm install --frozen-lockfile --prod=false && pnpm exec turbo run build --filter=@bdph/api
+    startCommand: pnpm --filter @bdph/api start
+    envVars:
+      # --- Non-secret runtime config (safe to commit) ---
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.11.0
+      - key: API_PORT
+        value: 10000
+      - key: API_GLOBAL_PREFIX
+        value: api
+      # Exactly one proxy (Render's load balancer) sits in front of the API.
+      - key: TRUST_PROXY
+        value: 1
+      - key: MONGODB_DB_NAME
+        value: bdph
+      - key: THROTTLE_TTL_SECONDS
+        value: 60
+      - key: THROTTLE_LIMIT
+        value: 120
+      - key: ACCESS_TOKEN_TTL
+        value: 900
+      - key: REFRESH_TOKEN_TTL
+        value: 2592000
+      - key: OTP_TTL
+        value: 300
+      - key: EMAIL_FROM
+        value: BD Property Hub <no-reply@bdpropertyhub.test>
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: MAPS_PROVIDER
+        value: maplibre
+      # Web origin — drives CORS + the Clerk `authorizedParties` check + email links.
+      - key: APP_BASE_URL
+        value: https://bdph-web.vercel.app
+      - key: CORS_ORIGINS
+        value: https://bdph-web.vercel.app
+      # --- Secrets (set in the Render dashboard; never committed) ---
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: LOCATION_FUZZ_SECRET
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
