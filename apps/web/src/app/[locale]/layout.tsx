@@ -40,10 +40,18 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    // ClerkProvider supplies the auth context the headless sign-in/up hooks use.
-    // It reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from the env (loaded from the root
-    // .env in next.config). Wraps the whole document so the hooks work everywhere.
-    <ClerkProvider>
+    // ClerkProvider supplies Clerk's auth context to the prebuilt <SignIn>/<SignUp>
+    // widgets. It reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from the env (loaded from the
+    // root .env in next.config). URLs are locale-aware, and every successful sign-in/up
+    // is forced to /complete, where we exchange the Clerk session for our own
+    // bdph_session cookie. Colours match the app's terracotta primary + radius.
+    <ClerkProvider
+      signInUrl={`/${locale}/login`}
+      signUpUrl={`/${locale}/register`}
+      signInForceRedirectUrl={`/${locale}/complete`}
+      signUpForceRedirectUrl={`/${locale}/complete`}
+      appearance={{ variables: { colorPrimary: '#b5654a', borderRadius: '0.625rem' } }}
+    >
       <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
         <body>
           <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>

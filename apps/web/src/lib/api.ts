@@ -159,7 +159,23 @@ export function loginUser(input: LoginInput): Promise<PublicUser> {
 // Bearer token; the API verifies it with Clerk, resolves/links the canonical user,
 // and sets the httpOnly bdph_session cookie — after this the app is authenticated
 // exactly as it is after a first-party login. Throws ApiError like the others.
-export async function bridgeClerkSession(clerkToken: string): Promise<PublicUser> {
+export async function bridgeClerkSession(
+  clerkToken: string,
+  signal?: AbortSignal,
+): Promise<PublicUser> {
+  // Bound the request: this runs on the post-auth /complete page, so a hung (not
+  // failed) API must still reject — otherwise the user is stranded on the spinner
+  // with no retry. On abort the fetch throws and surfaces as a retryable error. The
+  // caller's `signal` (its effect cleanup) is chained in too, so unmounting the
+  // bridge actually stops the in-flight authenticated request rather than only
+  // ignoring its result.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const onExternalAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener('abort', onExternalAbort, { once: true });
+  }
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/auth/clerk/session`, {
@@ -167,9 +183,13 @@ export async function bridgeClerkSession(clerkToken: string): Promise<PublicUser
       headers: { Authorization: `Bearer ${clerkToken}` },
       // Store the session cookie the API issues.
       credentials: 'include',
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError('Network request failed', 0);
+  } finally {
+    clearTimeout(timeout);
+    if (signal) signal.removeEventListener('abort', onExternalAbort);
   }
 
   const body: unknown = await response.json().catch(() => null);
