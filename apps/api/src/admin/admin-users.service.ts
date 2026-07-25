@@ -8,9 +8,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import {
+  ASSIGNABLE_ROLES,
+  effectiveRole,
   type AdminSettableUserStatus,
   type AdminUsersQuery,
   type ApiPage,
+  type AssignableRole,
   type PublicUser,
   type Role,
 } from '@bdph/types';
@@ -19,10 +22,19 @@ import { UsersService } from '../users/users.service';
 import { SessionService } from '../auth/session.service';
 import { escapeRegExp } from '../listings/listing-search.util';
 
-// Roles that make an account "staff". Acting on a staff account (suspend, role
-// change) is reserved for super admins — an admin must not be able to disable a
-// peer or a super admin (privilege-escalation / denial-of-service guard).
-const STAFF_ROLES: readonly Role[] = ['super_admin', 'admin', 'customer_support'];
+// Assigned roles that make an account "staff". Acting on a staff account (suspend)
+// is reserved for the prime admin — a standard admin must not be able to disable a
+// peer or the prime (privilege-escalation / denial-of-service guard).
+const STAFF_ROLES: readonly Role[] = ['admin_prime', 'admin'];
+
+// Legacy stored values that collapse to a given role, so the admin-list role
+// facet still matches pre-migration documents (which have `roles`, not `role`).
+const LEGACY_ROLE_VALUES: Record<Role, string[]> = {
+  admin_prime: ['admin_prime', 'super_admin'],
+  admin: ['admin', 'customer_support'],
+  seller: ['seller'],
+  buyer: ['buyer'],
+};
 
 // User management for the admin dashboard (FR-A1 / user.suspend /
 // staff.assign_role). The controller applies the role gate (admin+ for the list
@@ -44,7 +56,20 @@ export class AdminUsersService {
   async list(query: AdminUsersQuery): Promise<ApiPage<PublicUser>> {
     const { q, role, status, cursor, limit } = query;
     const filter: FilterQuery<UserDocument> = {};
-    if (role) filter.roles = role;
+    // Match the single `role` field OR — for un-migrated documents that only have
+    // the legacy `roles` array — the legacy value(s) that collapse to this role.
+    // ANDed via $and so it composes with the `q` $or and the cursor keyset below.
+    if (role) {
+      filter.$and = [
+        ...(filter.$and ?? []),
+        {
+          $or: [
+            { role },
+            { role: { $exists: false }, roles: { $in: LEGACY_ROLE_VALUES[role] } },
+          ],
+        },
+      ];
+    }
     if (status) filter.status = status;
     if (q) {
       // Escaped to a literal pattern so regex metacharacters in user input match
@@ -92,10 +117,10 @@ export class AdminUsersService {
     if (target._id.toString() === actor.id) {
       throw new ForbiddenException('You cannot change your own account status');
     }
-    // Only a super admin may act on a staff account; an admin is limited to
-    // end-user (buyer/seller) accounts.
-    if (this.isStaff(target) && !actor.roles.includes('super_admin')) {
-      throw new ForbiddenException('Only a super admin can manage staff accounts');
+    // Only the prime admin may act on a staff account; a standard admin is limited
+    // to end-user (buyer/seller) accounts.
+    if (this.isStaff(target) && actor.role !== 'admin_prime') {
+      throw new ForbiddenException('Only the prime admin can manage staff accounts');
     }
 
     target.status = status;
@@ -110,35 +135,41 @@ export class AdminUsersService {
     return this.users.toPublic(target);
   }
 
-  // Replace an account's roles (staff.assign_role — super_admin only, enforced at
-  // the controller). Duplicates are collapsed; a super admin cannot change their
-  // own roles (no self-demotion locking out the last admin, no accidental
-  // self-escalation audit gap).
-  async assignRoles(actor: PublicUser, userId: string, roles: Role[]): Promise<PublicUser> {
-    // Defense-in-depth: role assignment is super-admin-only. The controller's
-    // method-level @Roles('super_admin') already enforces this, but assert it here
-    // too so a future controller/guard regression can't quietly let an admin
-    // re-role accounts (including self-promotion) — this is the most sensitive
-    // capability in the module, so it doesn't rely on the route gate alone.
-    if (!actor.roles.includes('super_admin')) {
-      throw new ForbiddenException('Only a super admin can assign roles');
+  // Set an account's single role (staff.assign_role — admin_prime only, enforced
+  // at the controller). The prime cannot change their OWN role: that blanket
+  // self-block is what stops the sole prime from demoting themselves into a
+  // zero-prime lockout (there is no DB uniqueness guard on the prime role).
+  async assignRole(
+    actor: PublicUser,
+    userId: string,
+    role: AssignableRole,
+  ): Promise<PublicUser> {
+    // Defense-in-depth: role assignment is admin_prime-only. The controller's
+    // method-level @Roles('admin_prime') already enforces this, but assert it here
+    // too so a future controller/guard regression can't quietly let a standard
+    // admin re-role accounts (including self-promotion) — this is the most
+    // sensitive capability in the module, so it doesn't rely on the route gate
+    // alone.
+    if (actor.role !== 'admin_prime') {
+      throw new ForbiddenException('Only the prime admin can assign roles');
+    }
+    // admin_prime is never assignable through this path — it is conferred solely by
+    // SUPER_ADMIN_EMAIL. The DTO (ASSIGNABLE_ROLES) already excludes it; re-check
+    // here so the rule holds even if a caller bypasses the pipe.
+    if (!ASSIGNABLE_ROLES.includes(role as AssignableRole)) {
+      throw new BadRequestException('That role cannot be assigned');
     }
     const target = await this.findOrThrow(userId);
     if (target._id.toString() === actor.id) {
-      throw new ForbiddenException('You cannot change your own roles');
+      throw new ForbiddenException('You cannot change your own role');
     }
-    const unique = [...new Set(roles)];
-    if (unique.length === 0) {
-      throw new BadRequestException('At least one role is required');
-    }
-    target.roles = unique;
-    await target.save();
-    this.logger.log(`User ${target._id.toString()} roles set to [${unique.join(', ')}] by ${actor.id}`);
-    return this.users.toPublic(target);
+    const updated = await this.users.setRole(target._id.toString(), role);
+    this.logger.log(`User ${updated._id.toString()} role set to "${role}" by ${actor.id}`);
+    return this.users.toPublic(updated);
   }
 
   private isStaff(user: UserDocument): boolean {
-    return user.roles.some((role) => STAFF_ROLES.includes(role));
+    return STAFF_ROLES.includes(effectiveRole(user));
   }
 
   private async findOrThrow(userId: string): Promise<UserDocument> {

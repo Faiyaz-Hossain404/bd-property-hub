@@ -4,8 +4,66 @@ import { z } from 'zod';
 export const SUPPORTED_LOCALES = ['en', 'bn'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
-export const ROLES = ['super_admin', 'admin', 'customer_support', 'seller', 'buyer'] as const;
+// Single-role model: every account has exactly ONE assigned role. Ordered by
+// privilege, highest first. (Replaces the former multi-role set — 'super_admin'
+// is now 'admin_prime' and 'customer_support' was retired.)
+export const ROLES = ['admin_prime', 'admin', 'seller', 'buyer'] as const;
 export type Role = (typeof ROLES)[number];
+
+// Roles the admin console may assign to another account. Excludes admin_prime:
+// the prime (owner) role is conferred SOLELY by the configured owner email
+// (SUPER_ADMIN_EMAIL) and must never be minted through the generic role editor —
+// there is no DB uniqueness guard, so the editor must not be able to create a
+// second prime.
+export const ASSIGNABLE_ROLES = ['admin', 'seller', 'buyer'] as const;
+export type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
+// Capabilities a single assigned role implies. admin_prime and admin additionally
+// inherit full seller + buyer capability; seller/buyer imply only themselves.
+// This is the ONE place that inheritance rule lives — the API expands the stored
+// role into this set on read (PublicUser.roles), so every RolesGuard membership
+// check (and the web display-gating helpers) transparently honour it.
+export function roleCapabilities(role: Role): Role[] {
+  switch (role) {
+    case 'admin_prime':
+      return ['admin_prime', 'admin', 'seller', 'buyer'];
+    case 'admin':
+      return ['admin', 'seller', 'buyer'];
+    case 'seller':
+      return ['seller'];
+    case 'buyer':
+      return ['buyer'];
+  }
+}
+
+// Highest-privilege-wins ranking, used to collapse a set of roles to one.
+const ROLE_RANK: Record<Role, number> = { admin_prime: 3, admin: 2, seller: 1, buyer: 0 };
+
+// Collapse a legacy multi-role array (raw strings, which may still hold the
+// retired 'super_admin' / 'customer_support' values) down to the single role that
+// now represents the account: super_admin -> admin_prime, customer_support ->
+// admin, then the highest-ranked remaining role wins. Empty/unknown -> buyer.
+// Shared by the read-time fallback for un-migrated documents and the one-off
+// backfill script so both collapse identically.
+export function collapseLegacyRoles(legacy: readonly string[] | null | undefined): Role {
+  if (!legacy || legacy.length === 0) return 'buyer';
+  let best: Role = 'buyer';
+  for (const raw of legacy) {
+    const role = raw === 'super_admin' ? 'admin_prime' : raw === 'customer_support' ? 'admin' : raw;
+    const rank = ROLE_RANK[role as Role];
+    if (rank !== undefined && rank > ROLE_RANK[best]) best = role as Role;
+  }
+  return best;
+}
+
+// The one assigned role for a user record, tolerating pre-migration documents
+// that only carry the legacy `roles` array. New code always sets `role` directly.
+export function effectiveRole(user: {
+  role?: Role | null;
+  roles?: readonly string[] | null;
+}): Role {
+  return user.role ?? collapseLegacyRoles(user.roles);
+}
 
 // --- Money -------------------------------------------------------------------
 // Stored as integer minor units (poisha) to avoid floating-point drift; the
@@ -577,8 +635,9 @@ export type SellerKycStatus = (typeof SELLER_KYC_STATUSES)[number];
 // review once its owner is verified. Shared by the API (authoritative check in
 // submitForReview) and the web dashboard (mirrors it to disable Submit with a
 // hint), so it lives here beside listingCompletenessGaps — one definition, both
-// sides. Staff (admin/super_admin) don't list properties in practice, but if they
-// own a listing the same rule applies; there is no seller-role carve-out here.
+// sides. Staff (admin/admin_prime) don't list properties in practice, but if they
+// own a listing the same rule applies; the implied seller capability does not
+// bypass KYC — there is no seller-role carve-out here.
 export function canSubmitListings(kycStatus: SellerKycStatus): boolean {
   return kycStatus === 'verified';
 }
@@ -594,6 +653,12 @@ export interface PublicUser {
   emailVerified: boolean;
   name: string;
   phone: string | null;
+  // The single assigned role — the account's identity and the badge shown in the
+  // admin console.
+  role: Role;
+  // Capabilities implied by `role` (admin/admin_prime expand to seller + buyer).
+  // Route guards and client display-gating test membership against THIS set, so
+  // an admin transparently satisfies a seller-gated check.
   roles: Role[];
   status: UserStatus;
   // Seller verification gate (FR-S8). 'unverified' for buyers who never applied.
@@ -742,10 +807,11 @@ export const adminUpdateUserStatusInputSchema = z.object({
 });
 export type AdminUpdateUserStatusInput = z.infer<typeof adminUpdateUserStatusInputSchema>;
 
-// Replace an account's roles (super_admin only). At least one role is required;
-// duplicates are collapsed server-side. The service blocks a super admin from
-// changing their own roles (no self-lockout / self-demotion of the last admin).
-export const adminAssignRolesInputSchema = z.object({
-  roles: z.array(z.enum(ROLES)).min(1).max(ROLES.length),
+// Set an account's single role (admin_prime only). admin_prime is deliberately
+// NOT an assignable value — the prime role comes solely from SUPER_ADMIN_EMAIL —
+// so the schema only accepts ASSIGNABLE_ROLES. The service additionally blocks
+// changing your own role (no self-lockout / self-demotion of the sole prime).
+export const adminAssignRoleInputSchema = z.object({
+  role: z.enum(ASSIGNABLE_ROLES),
 });
-export type AdminAssignRolesInput = z.infer<typeof adminAssignRolesInputSchema>;
+export type AdminAssignRoleInput = z.infer<typeof adminAssignRoleInputSchema>;

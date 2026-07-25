@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import {
-  adminAssignRolesInputSchema,
+  adminAssignRoleInputSchema,
   adminUpdateUserStatusInputSchema,
   adminUsersQuerySchema,
-  type AdminAssignRolesInput,
+  type AdminAssignRoleInput,
   type AdminUpdateUserStatusInput,
   type AdminUsersQuery,
   type ApiPage,
@@ -17,13 +17,14 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AdminUsersService } from './admin-users.service';
 
 // Admin user management (FR-A1). Class-level @Roles gates the list + status
-// routes to admin/super_admin; the role-assignment route TIGHTENS this to
-// super_admin only via a method-level @Roles (RolesGuard reads the handler
-// override). Per-target privilege rules (no self-action, admins can't touch
-// staff) live in AdminUsersService.
+// routes to admin/admin_prime; the role-assignment route TIGHTENS this to
+// admin_prime only via a method-level @Roles (RolesGuard reads the handler
+// override), so a standard admin can view users and suspend end-users but cannot
+// change anyone's role. Per-target privilege rules (no self-action, admins can't
+// touch staff) live in AdminUsersService.
 @Controller('admin/users')
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@Roles('admin', 'admin_prime')
 export class AdminUsersController {
   constructor(private readonly adminUsers: AdminUsersService) {}
 
@@ -43,15 +44,16 @@ export class AdminUsersController {
     return this.adminUsers.setStatus(actor, userId, body.status);
   }
 
-  // Role assignment is a super-admin-only capability (staff.assign_role). This
-  // method-level @Roles overrides the class-level one for this route.
-  @Patch(':userId/roles')
-  @Roles('super_admin')
-  assignRoles(
+  // Role assignment is an admin_prime-only capability (staff.assign_role). This
+  // method-level @Roles overrides the class-level one, so a standard admin is
+  // blocked here even though they reach the rest of the controller.
+  @Patch(':userId/role')
+  @Roles('admin_prime')
+  assignRole(
     @Param('userId') userId: string,
-    @Body(new ZodValidationPipe(adminAssignRolesInputSchema)) body: AdminAssignRolesInput,
+    @Body(new ZodValidationPipe(adminAssignRoleInputSchema)) body: AdminAssignRoleInput,
     @CurrentUser() actor: PublicUser,
   ): Promise<PublicUser> {
-    return this.adminUsers.assignRoles(actor, userId, body.roles);
+    return this.adminUsers.assignRole(actor, userId, body.role);
   }
 }

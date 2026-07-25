@@ -18,7 +18,7 @@ const REQUEST_VERIFICATION_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
 // service enforces the state rule (only from unverified/rejected).
 @Controller('me/verification')
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles('seller', 'admin', 'super_admin')
+@Roles('seller', 'admin', 'admin_prime')
 export class MeVerificationController {
   constructor(
     private readonly verification: SellerVerificationService,

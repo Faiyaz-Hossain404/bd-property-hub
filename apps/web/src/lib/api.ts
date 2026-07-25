@@ -1,5 +1,5 @@
 import type {
-  AdminAssignRolesInput,
+  AdminAssignRoleInput,
   AdminStats,
   AdminUpdateUserStatusInput,
   ApiPage,
@@ -447,7 +447,7 @@ export function rejectSellerVerification(
 }
 
 // --- Admin dashboard (FR-A1/A2/A3) ------------------------------------------
-// All admin routes are role-gated server-side (admin/super_admin); the web only
+// All admin routes are role-gated server-side (admin/admin_prime); the web only
 // mirrors that to hide the UI. A non-admin who reaches these still gets a 403.
 
 // Aggregate analytics for the overview charts (dashboard.view_analytics).
@@ -484,10 +484,10 @@ export function setAdminUserStatus(
   return patchJson<PublicUser>(`/admin/users/${userId}/status`, input);
 }
 
-// Replace an account's roles (super_admin only, staff.assign_role).
-export function setAdminUserRoles(
+// Set an account's single role (admin_prime only, staff.assign_role).
+export function setAdminUserRole(
   userId: string,
-  input: AdminAssignRolesInput,
+  input: AdminAssignRoleInput,
 ): Promise<PublicUser> {
-  return patchJson<PublicUser>(`/admin/users/${userId}/roles`, input);
+  return patchJson<PublicUser>(`/admin/users/${userId}/role`, input);
 }

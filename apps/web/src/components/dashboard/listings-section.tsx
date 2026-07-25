@@ -32,7 +32,7 @@ import { ListingWithdraw } from "./listing-withdraw"
 import { ListingRestore } from "./listing-restore"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
 
-const SELLER_ROLES = ["seller", "admin", "super_admin"] as const
+const SELLER_ROLES = ["seller", "admin", "admin_prime"] as const
 const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
 // A seller can withdraw a listing that's in flight or live, but not a bare draft
 // (nothing public to pull yet — that's the editor's job) or one already archived.

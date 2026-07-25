@@ -3,14 +3,17 @@
 import { useEffect, useState, useTransition, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { LoaderCircle } from "lucide-react"
-import { ROLES, USER_STATUSES, type PublicUser, type Role, type UserStatus } from "@bdph/types"
-
 import {
-  ApiError,
-  getAdminUsers,
-  setAdminUserRoles,
-  setAdminUserStatus,
-} from "@/lib/api"
+  ASSIGNABLE_ROLES,
+  ROLES,
+  USER_STATUSES,
+  type AssignableRole,
+  type PublicUser,
+  type Role,
+  type UserStatus,
+} from "@bdph/types"
+
+import { ApiError, getAdminUsers, setAdminUserRole, setAdminUserStatus } from "@/lib/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,9 +28,6 @@ import {
 } from "@/components/ui/select"
 
 type PanelT = ReturnType<typeof useTranslations>
-
-const STAFF_ROLES: readonly Role[] = ["super_admin", "admin", "customer_support"]
-const isStaff = (user: PublicUser) => user.roles.some((r) => STAFF_ROLES.includes(r))
 
 // Radix Select rejects an empty-string item value, so "no filter applied" is
 // represented by this sentinel and translated back to "" at the boundary.
@@ -76,7 +76,9 @@ export function UsersPanel() {
   const t = useTranslations("admin")
   const current = useCurrentUser()
   const viewer = current.status === "authenticated" ? current.user : null
-  const canManageRoles = viewer?.roles.includes("super_admin") ?? false
+  // Only the prime admin may change roles — the API's PATCH …/role endpoint 403s
+  // everyone else, so a standard admin sees the list but no role control.
+  const canManageRoles = viewer?.role === "admin_prime"
 
   const [queryInput, setQueryInput] = useState("")
   const [filters, setFilters] = useState<{ q: string; role: string; status: string }>({
@@ -238,12 +240,12 @@ function UserRow({
 }) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [editingRoles, setEditingRoles] = useState(false)
 
   const isSelf = user.id === viewerId
   const suspended = user.status === "suspended"
-  // Role editing is a super-admin capability and never applies to your own account.
-  const showRoleEditor = canManageRoles && !isSelf
+  // The prime never edits their OWN role here (self-lockout guard — the server
+  // enforces it too); they get the "This is you" note instead of a selector.
+  const showRoleSelect = canManageRoles && !isSelf
 
   function toggleStatus() {
     setError(null)
@@ -259,6 +261,18 @@ function UserRow({
     })
   }
 
+  function applyRole(role: AssignableRole) {
+    setError(null)
+    startTransition(async () => {
+      try {
+        const updated = await setAdminUserRole(user.id, { role })
+        onUpdated(updated)
+      } catch (caught) {
+        setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
+      }
+    })
+  }
+
   return (
     <div className="flex flex-col gap-2 py-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -267,12 +281,10 @@ function UserRow({
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {user.roles.map((role) => (
-            <Badge key={role} variant="secondary">
-              {t(`breakdown.role.${role}`)}
-            </Badge>
-          ))}
-          <Badge variant={statusVariant(user.status)}>{t(`breakdown.userStatus.${user.status}`)}</Badge>
+          <Badge variant="secondary">{t(`breakdown.role.${user.role}`)}</Badge>
+          <Badge variant={statusVariant(user.status)}>
+            {t(`breakdown.userStatus.${user.status}`)}
+          </Badge>
         </div>
       </div>
 
@@ -288,112 +300,33 @@ function UserRow({
           {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {suspended ? t("users.reactivate") : t("users.suspend")}
         </Button>
-        {showRoleEditor ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setEditingRoles((v) => !v)}
+
+        {showRoleSelect ? (
+          <Select
+            value={ASSIGNABLE_ROLES.includes(user.role as AssignableRole) ? user.role : undefined}
+            onValueChange={(next) => applyRole(next as AssignableRole)}
             disabled={isPending}
           >
-            {t("users.editRoles")}
-          </Button>
+            <SelectTrigger aria-label={t("users.changeRole")} className="h-8 w-40">
+              <SelectValue placeholder={t("users.changeRole")} />
+            </SelectTrigger>
+            <SelectContent>
+              {ASSIGNABLE_ROLES.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {t(`breakdown.role.${role}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : null}
-        {isSelf ? <span className="text-xs text-muted-foreground">{t("users.youBadge")}</span> : null}
-      </div>
 
-      {editingRoles ? (
-        <RoleEditor
-          user={user}
-          onSaved={(updated) => {
-            onUpdated(updated)
-            setEditingRoles(false)
-          }}
-          onCancel={() => setEditingRoles(false)}
-          t={t}
-        />
-      ) : null}
+        {isSelf ? (
+          <span className="text-xs text-muted-foreground">{t("users.youBadge")}</span>
+        ) : null}
+      </div>
 
       {error ? (
         <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function RoleEditor({
-  user,
-  onSaved,
-  onCancel,
-  t,
-}: {
-  user: PublicUser
-  onSaved: (user: PublicUser) => void
-  onCancel: () => void
-  t: PanelT
-}) {
-  const [selected, setSelected] = useState<Role[]>(user.roles)
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  function toggle(role: Role) {
-    setSelected((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    )
-  }
-
-  function save() {
-    if (selected.length === 0) {
-      setError(t("users.rolesRequired"))
-      return
-    }
-    setError(null)
-    startTransition(async () => {
-      try {
-        const updated = await setAdminUserRoles(user.id, { roles: selected })
-        onSaved(updated)
-      } catch (caught) {
-        setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
-      }
-    })
-  }
-
-  return (
-    <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">{t("users.editRolesTitle")}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {ROLES.map((role) => {
-          const active = selected.includes(role)
-          return (
-            <button
-              key={role}
-              type="button"
-              onClick={() => toggle(role)}
-              aria-pressed={active}
-              className={
-                active
-                  ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                  : "rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
-              }
-            >
-              {t(`breakdown.role.${role}`)}
-            </button>
-          )
-        })}
-      </div>
-      <div className="mt-3 flex items-center gap-2">
-        <Button type="button" size="sm" onClick={save} disabled={isPending}>
-          {isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-          {t("users.saveRoles")}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={isPending}>
-          {t("users.cancel")}
-        </Button>
-      </div>
-      {error ? (
-        <p role="alert" className="mt-2 text-xs text-destructive">
           {error}
         </p>
       ) : null}

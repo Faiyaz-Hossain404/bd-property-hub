@@ -8,7 +8,7 @@ import type { PublicUser } from "@bdph/types"
 import { Link, usePathname } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
 import { isRouteActive } from "@/lib/nav"
-import { isStaff, isSuperAdmin } from "@/lib/roles"
+import { isStaff, isAdminPrime } from "@/lib/roles"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLogout } from "@/hooks/use-logout"
 import { Button } from "@/components/ui/button"
@@ -38,7 +38,7 @@ function useNavLinks(user: PublicUser | null): NavLink[] {
   ]
   if (user) links.push({ href: "/dashboard", label: t("dashboard") })
   if (isStaff(user)) {
-    links.push({ href: "/admin", label: isSuperAdmin(user) ? t("superAdmin") : t("admin") })
+    links.push({ href: "/admin", label: isAdminPrime(user) ? t("superAdmin") : t("admin") })
   }
   return links
 }

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import type { Locale, PublicUser, Role } from '@bdph/types';
+import { effectiveRole, roleCapabilities } from '@bdph/types';
 import { User, UserDocument } from './schemas/user.schema';
 
 interface CreateLocalInput {
@@ -58,6 +59,7 @@ export class UsersService {
       name: input.name,
       locale: input.locale,
       passwordHash: input.passwordHash,
+      role: 'buyer',
     });
   }
 
@@ -165,6 +167,7 @@ export class UsersService {
         clerkUserId: input.clerkUserId,
         emailVerified: true,
         status: 'active',
+        role: 'buyer',
       });
       return { user: created, revokePriorSessions: false };
     } catch (error) {
@@ -185,9 +188,14 @@ export class UsersService {
     await this.userModel.updateOne({ clerkUserId }, { $set: { status: 'deleted' } }).exec();
   }
 
-  async addRole(userId: string, role: Role): Promise<UserDocument> {
+  // Set an account's single assigned role, overwriting whatever it held and
+  // clearing any legacy multi-role array so the document is clean single-role.
+  // This is the ONLY role mutator (single-role model): unlike the old additive
+  // addRole, assigning a role necessarily replaces the previous one — the implied
+  // seller/buyer capabilities are derived on read, not stored.
+  async setRole(userId: string, role: Role): Promise<UserDocument> {
     const updated = await this.userModel
-      .findByIdAndUpdate(userId, { $addToSet: { roles: role } }, { new: true })
+      .findByIdAndUpdate(userId, { $set: { role }, $unset: { roles: 1 } }, { new: true })
       .exec();
     if (!updated) {
       throw new NotFoundException('User not found');
@@ -195,46 +203,55 @@ export class UsersService {
     return updated;
   }
 
-  // Grant the configured super admin their role once their email is proven owned.
-  // Idempotent and self-annealing: only the account whose email matches
-  // SUPER_ADMIN_EMAIL is affected, the role is ADDED via addRole ($addToSet, existing
-  // roles preserved), and once present a repeat call is a no-op. Returns the same
-  // document — re-read with the role when elevation happened — so the caller's
-  // toPublic reflects it immediately.
+  // Grant the configured owner the admin_prime role once their email is proven
+  // owned. Idempotent and self-annealing: only the account whose email matches
+  // SUPER_ADMIN_EMAIL is affected, its role is SET to admin_prime, and once it
+  // holds prime a repeat call is a no-op. effectiveRole() collapses a legacy
+  // 'super_admin' array value to admin_prime, so a pre-migration owner is
+  // recognised as already-prime and not needlessly re-written. Returns the same
+  // document (re-read when elevation happened) so the caller's toPublic reflects
+  // it immediately.
   //
   // SECURITY: elevation requires a VERIFIED, ACTIVE account. Registration mints a
   // session BEFORE the email is verified, so without this gate anyone who knew the
   // owner's email could self-register it (with their own password) and instantly
-  // become super_admin before the real owner ever signs up. Requiring emailVerified
-  // means the grant only happens once inbox ownership is proven (the email link, or
-  // a Clerk-verified identity); requiring 'active' keeps a suspended/deleted account
-  // from being (re-)elevated. A no-op (returns the input unchanged) when
-  // SUPER_ADMIN_EMAIL is unset, the account isn't verified+active, the email doesn't
-  // match, or the role is already held.
-  async ensureSuperAdmin(user: UserDocument): Promise<UserDocument> {
+  // become the prime admin before the real owner ever signs up. Requiring
+  // emailVerified means the grant only happens once inbox ownership is proven (the
+  // email link, or a Clerk-verified identity); requiring 'active' keeps a
+  // suspended/deleted account from being (re-)elevated. A no-op (returns the input
+  // unchanged) when SUPER_ADMIN_EMAIL is unset, the account isn't verified+active,
+  // the email doesn't match, or the role is already admin_prime.
+  async ensureAdminPrime(user: UserDocument): Promise<UserDocument> {
     if (
       !this.superAdminEmail ||
       !user.emailVerified ||
       user.status !== 'active' ||
       user.email.toLowerCase() !== this.superAdminEmail ||
-      user.roles.includes('super_admin')
+      effectiveRole(user) === 'admin_prime'
     ) {
       return user;
     }
-    const elevated = await this.addRole(user.id, 'super_admin');
-    this.logger.log(`Granted super_admin to user ${elevated.id} (email matches SUPER_ADMIN_EMAIL)`);
+    const elevated = await this.setRole(user.id, 'admin_prime');
+    this.logger.log(
+      `Granted admin_prime to user ${elevated.id} (email matches SUPER_ADMIN_EMAIL)`,
+    );
     return elevated;
   }
 
   toPublic(user: UserDocument): PublicUser {
     const createdAt = user.get('createdAt') as Date | undefined;
+    // The single assigned role (with a legacy-array fallback for pre-migration
+    // documents), plus the capability set it implies — guards and the web read
+    // membership against `roles`, the badge/UI reads `role`.
+    const role = effectiveRole(user);
     return {
       id: user._id.toString(),
       email: user.email,
       emailVerified: user.emailVerified,
       name: user.name,
       phone: user.phone,
-      roles: user.roles,
+      role,
+      roles: roleCapabilities(role),
       status: user.status,
       // Coalesce so users created before this field default to 'unverified'.
       kycStatus: user.kycStatus ?? 'unverified',

@@ -45,10 +45,10 @@ export class LocalAuthProvider implements AuthProvider {
     if (user.status === 'deleted') {
       throw new UnauthorizedException('Invalid credentials');
     }
-    // Auto-grant the super_admin role to the configured owner email on sign-in
+    // Auto-grant the admin_prime role to the configured owner email on sign-in
     // (no-op for everyone else). Runs after the status checks so a suspended or
     // deleted account is rejected before any elevation.
-    const elevated = await this.users.ensureSuperAdmin(user);
+    const elevated = await this.users.ensureAdminPrime(user);
     return this.users.toPublic(elevated);
   }
 }

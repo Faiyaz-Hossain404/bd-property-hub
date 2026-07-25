@@ -6,11 +6,11 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { AdminStatsService } from './admin-stats.service';
 
 // Analytics dashboard data (FR-A3, dashboard.view_analytics). Read-only aggregate
-// counts; both staff roles that hold the permission (admin, super_admin) may read
+// counts; both staff roles that hold the permission (admin, admin_prime) may read
 // it. Class-level @Roles is enforced by RolesGuard (reads class metadata too).
 @Controller('admin/stats')
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@Roles('admin', 'admin_prime')
 export class AdminStatsController {
   constructor(private readonly stats: AdminStatsService) {}
 
