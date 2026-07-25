@@ -71,16 +71,14 @@ export class ClerkService {
   }
 
   // Verify a Clerk session JWT and return the Clerk user id (the `sub` claim).
-  // verifyToken usually resolves with { data } | { errors }, but it THROWS on a
-  // malformed token or a failed `azp` check — so wrap it and map every failure
-  // (thrown or returned) to a 401, never letting one escape as a 500.
+  // verifyToken resolves with the decoded payload on success and THROWS on a
+  // malformed token or a failed `azp` check — so wrap it and map every failure to a
+  // 401, never letting one escape as a 500.
   async verifySessionToken(token: string): Promise<string> {
     if (!this.secretKey) {
       throw new ServiceUnavailableException('Clerk is not configured');
     }
-    // Normalize a thrown error to null (don't annotate `result`: the SDK's return
-    // type resolves inconsistently across the project's tsc and ts-jest, so we let
-    // it infer and read `data`/`errors` defensively). Any failure => 401.
+    // Map a thrown error to null so any failure becomes a 401 (never a 500).
     const result = await verifyToken(token, {
       secretKey: this.secretKey,
       // Omit when empty so verifyToken skips the check (default: trust the
@@ -94,8 +92,20 @@ export class ClerkService {
       );
       return null;
     });
-    const sub =
-      !result || result.errors ? undefined : (result.data as { sub?: string } | undefined)?.sub;
+    // @clerk/backend@3.12.0 RESOLVES verifyToken to the decoded JwtPayload directly
+    // (`sub` at the top level) and throws on failure. Its declared type — and our
+    // unit-test mock — instead model the older `{ data, errors }` envelope. Read both
+    // shapes: treat a present `errors` as a rejection, then take `sub` from `.data`
+    // when the envelope is used, otherwise from the payload itself. (Missing this is
+    // what made every valid token 401: `result.data.sub` is always undefined when the
+    // SDK returns the payload directly.)
+    const verified = result as
+      | { sub?: string; data?: { sub?: string }; errors?: unknown }
+      | null;
+    if (!verified || verified.errors) {
+      throw new UnauthorizedException('Invalid Clerk session token');
+    }
+    const sub = verified.data?.sub ?? verified.sub;
     if (!sub) {
       throw new UnauthorizedException('Invalid Clerk session token');
     }
