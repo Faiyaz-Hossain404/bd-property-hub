@@ -5,8 +5,17 @@
   },
   "nav": {
     "brand": "BD Property Hub",
+    "home": "Home",
+    "listings": "Listings",
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "superAdmin": "Super Admin",
     "browse": "Browse",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "account": "Account menu",
+    "menu": "Menu",
+    "openMenu": "Open menu"
   },
   "auth": {
     "loginTitle": "Welcome back",

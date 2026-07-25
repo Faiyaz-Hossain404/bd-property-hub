@@ -5,79 +5,79 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * BD Property Hub design system — warm editorial palette
- * (terracotta · olive · golden ochre · dusty blue · cream · peach).
+ * BD Property Hub design system — modern SaaS palette
+ * (slate neutrals · emerald primary · teal / sky / amber / violet accents).
  * shadcn semantic tokens live in :root / .dark; the 12 raw swatches from the
  * source palette are exposed as Tailwind utilities in @theme inline
  * (e.g. bg-clay, text-olive, border-ochre) for custom + Magic UI surfaces.
  */
 :root {
-  --background: #faf6ee;
-  --foreground: #2c2620;
-  --card: #fffdf8;
-  --card-foreground: #2c2620;
-  --popover: #fffdf8;
-  --popover-foreground: #2c2620;
-  --primary: #b5654a;
-  --primary-foreground: #fbf6ee;
-  --secondary: #e9e4d2;
-  --secondary-foreground: #44402f;
-  --muted: #eee7d8;
-  --muted-foreground: #6f6657;
-  --accent: #e4e0cb;
-  --accent-foreground: #3d3a2a;
-  --destructive: #b23a2e;
-  --border: #e2dacb;
-  --input: #e2dacb;
-  --ring: #b5654a;
-  --chart-1: #bc6b49;
-  --chart-2: #8e9070;
-  --chart-3: #d8a24e;
-  --chart-4: #a9c3ca;
-  --chart-5: #c3c69e;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #059669;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #059669;
+  --chart-1: #059669;
+  --chart-2: #0d9488;
+  --chart-3: #0ea5e9;
+  --chart-4: #f59e0b;
+  --chart-5: #8b5cf6;
   --radius: 0.625rem;
-  --sidebar: #f4eee2;
-  --sidebar-foreground: #2c2620;
-  --sidebar-primary: #b5654a;
-  --sidebar-primary-foreground: #fbf6ee;
-  --sidebar-accent: #e4e0cb;
-  --sidebar-accent-foreground: #3d3a2a;
-  --sidebar-border: #e2dacb;
-  --sidebar-ring: #b5654a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #f8fafc;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #059669;
 }
 
 .dark {
-  --background: #211d18;
-  --foreground: #ede6d8;
-  --card: #2a251f;
-  --card-foreground: #ede6d8;
-  --popover: #2a251f;
-  --popover-foreground: #ede6d8;
-  --primary: #c97a5b;
-  --primary-foreground: #211d18;
-  --secondary: #34302a;
-  --secondary-foreground: #ede6d8;
-  --muted: #34302a;
-  --muted-foreground: #b3a893;
-  --accent: #3a352d;
-  --accent-foreground: #ede6d8;
-  --destructive: #d45b49;
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --card: #0f172a;
+  --card-foreground: #e2e8f0;
+  --popover: #0f172a;
+  --popover-foreground: #e2e8f0;
+  --primary: #10b981;
+  --primary-foreground: #022c22;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #e2e8f0;
+  --destructive: #ef4444;
   --border: #ffffff1a;
   --input: #ffffff26;
-  --ring: #c97a5b;
-  --chart-1: #c97a5b;
-  --chart-2: #9ea275;
-  --chart-3: #d8a24e;
-  --chart-4: #a9c3ca;
-  --chart-5: #c3c69e;
-  --sidebar: #2a251f;
-  --sidebar-foreground: #ede6d8;
-  --sidebar-primary: #c97a5b;
-  --sidebar-primary-foreground: #211d18;
-  --sidebar-accent: #3a352d;
-  --sidebar-accent-foreground: #ede6d8;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #2dd4bf;
+  --chart-3: #38bdf8;
+  --chart-4: #fbbf24;
+  --chart-5: #a78bfa;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #022c22;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #e2e8f0;
   --sidebar-border: #ffffff1a;
-  --sidebar-ring: #c97a5b;
+  --sidebar-ring: #10b981;
 }
 
 @theme inline {
@@ -118,18 +118,18 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Raw palette swatches → utilities (bg-/text-/border-/from-/to-). */
-  --color-clay: #bc6b49;
-  --color-tan: #cda888;
-  --color-olive: #8e9070;
-  --color-dusty-blue: #a9c3ca;
-  --color-cream: #ecdcb6;
-  --color-ochre: #d8a24e;
-  --color-sage: #c3c69e;
-  --color-mist: #dce3db;
-  --color-greige: #dcd3c6;
-  --color-peach: #f0c9a6;
-  --color-linen: #e6e7dd;
-  --color-fog: #dce2e0;
+  --color-clay: #059669;
+  --color-tan: #94a3b8;
+  --color-olive: #0d9488;
+  --color-dusty-blue: #0ea5e9;
+  --color-cream: #f1f5f9;
+  --color-ochre: #f59e0b;
+  --color-sage: #6ee7b7;
+  --color-mist: #e2e8f0;
+  --color-greige: #e2e8f0;
+  --color-peach: #fcd34d;
+  --color-linen: #f1f5f9;
+  --color-fog: #e2e8f0;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
