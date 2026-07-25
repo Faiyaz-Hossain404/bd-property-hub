@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { LoaderCircle } from "lucide-react"
 
 import { useRouter } from "@/i18n/navigation"
@@ -41,10 +41,31 @@ function delay(ms: number, signal: AbortSignal): Promise<void> {
 // mount→cleanup→mount in dev) can't fire a duplicate authenticated POST or leave a
 // request running after this component is gone.
 export function SessionBridge() {
-  const { getToken } = useAuth()
+  const { getToken, signOut } = useAuth()
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations("auth")
   const [failed, setFailed] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+
+  // Return to sign-in, but clear the Clerk session first. After a failed bridge the
+  // Clerk session is still active, so navigating straight to /login would make
+  // <SignIn> immediately redirect back here — an infinite loop. Signing out lets
+  // /login render the form again. redirectUrl keeps the current locale prefix.
+  async function backToSignIn() {
+    setRecovering(true)
+    try {
+      // On success this clears the Clerk session and navigates to /login, unmounting us.
+      await signOut({ redirectUrl: `/${locale}/login` })
+    } catch (error) {
+      // Do NOT navigate to /login on failure: if sign-out didn't complete, the Clerk
+      // session may still be active and /login would bounce us back to /complete (the
+      // loop). Stay on this page and let the user retry.
+      console.error("Clerk sign-out failed during sign-in recovery", error)
+      setRecovering(false)
+      setFailed(true)
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -69,8 +90,10 @@ export function SessionBridge() {
         }
         await delay(250, signal)
       }
-      // No Clerk session showed up — send them back to sign in.
-      if (!signal.aborted) router.replace("/login")
+      // No Clerk session resolved in the poll window. Show the recoverable failure
+      // state rather than navigating to /login directly — its CTA signs out first, so
+      // a session that activates late can't bounce us back to /complete (the loop).
+      if (!signal.aborted) setFailed(true)
     }
 
     void bridge()
@@ -86,14 +109,16 @@ export function SessionBridge() {
       className="flex flex-col items-center gap-3 text-center"
       role="status"
       aria-live="polite"
+      aria-busy={recovering}
     >
       {failed ? (
         <>
           <p className="text-sm text-muted-foreground">{t("completeError")}</p>
           <button
             type="button"
-            onClick={() => router.replace("/login")}
-            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+            onClick={backToSignIn}
+            disabled={recovering}
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
           >
             {t("completeRetry")}
           </button>

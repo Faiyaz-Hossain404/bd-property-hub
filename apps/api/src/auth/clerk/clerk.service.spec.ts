@@ -38,6 +38,42 @@ describe('ClerkService.verifySessionToken', () => {
     await expect(service.verifySessionToken('tok')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('maps a thrown verification error to a 401 (not a 500)', async () => {
+    // verifyToken throws (e.g. an absent/mismatched `azp`) instead of returning
+    // { errors }; without a try/catch this used to escape as an unhandled 500.
+    mockVerifyToken.mockRejectedValue(new Error('Invalid JWT Authorized party claim (azp)'));
+    const service = makeService({ CLERK_SECRET_KEY: 'sk_test' });
+
+    await expect(service.verifySessionToken('tok')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('skips the authorized-parties check by default, even when CORS is configured', async () => {
+    mockVerifyToken.mockResolvedValue({ data: { sub: 'user_123' } });
+    // CORS is set but CLERK_AUTHORIZED_PARTIES is not: the azp check must NOT be
+    // derived from CORS, so verifyToken is called without authorizedParties.
+    const service = makeService({
+      CLERK_SECRET_KEY: 'sk_test',
+      CORS_ORIGINS: 'http://localhost:3000',
+    });
+
+    await expect(service.verifySessionToken('tok')).resolves.toBe('user_123');
+    expect(mockVerifyToken).toHaveBeenCalledWith('tok', { secretKey: 'sk_test' });
+  });
+
+  it('enforces authorized parties only when CLERK_AUTHORIZED_PARTIES is set', async () => {
+    mockVerifyToken.mockResolvedValue({ data: { sub: 'user_123' } });
+    const service = makeService({
+      CLERK_SECRET_KEY: 'sk_test',
+      CLERK_AUTHORIZED_PARTIES: 'https://app.example.com, https://www.example.com/',
+    });
+
+    await service.verifySessionToken('tok');
+    expect(mockVerifyToken).toHaveBeenCalledWith('tok', {
+      secretKey: 'sk_test',
+      authorizedParties: ['https://app.example.com', 'https://www.example.com'],
+    });
+  });
+
   it('rejects a verified token that carries no subject', async () => {
     mockVerifyToken.mockResolvedValue({ data: {} });
     const service = makeService({ CLERK_SECRET_KEY: 'sk_test' });
