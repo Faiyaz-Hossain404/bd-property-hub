@@ -131,13 +131,13 @@ export function LocationMap({ center, zoom, marker, circleRadiusMeters, onPick, 
             id: "privacy-circle-fill",
             type: "fill",
             source: "privacy-circle",
-            paint: { "fill-color": "#e07a5f", "fill-opacity": 0.15 },
+            paint: { "fill-color": "#1d4ed8", "fill-opacity": 0.14 },
           })
           map.addLayer({
             id: "privacy-circle-line",
             type: "line",
             source: "privacy-circle",
-            paint: { "line-color": "#e07a5f", "line-opacity": 0.5, "line-width": 1.5 },
+            paint: { "line-color": "#1d4ed8", "line-opacity": 0.5, "line-width": 1.5 },
           })
         })
       }

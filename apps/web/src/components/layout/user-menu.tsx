@@ -41,9 +41,15 @@ export function UserMenu({ user }: { user: PublicUser }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={t("account")}
-        className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-primary/20 transition-colors outline-none hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center gap-2 rounded-full p-1 transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring lg:pr-3"
       >
-        {initials(user.name, user.email)}
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-primary/20">
+          {initials(user.name, user.email)}
+        </span>
+        <span className="hidden max-w-40 min-w-0 flex-col text-left leading-tight lg:flex">
+          <span className="truncate text-sm font-semibold text-foreground">{user.name}</span>
+          <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel className="flex flex-col gap-0.5 py-1.5">

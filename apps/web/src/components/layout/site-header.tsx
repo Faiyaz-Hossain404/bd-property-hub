@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet"
 import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { UserMenu } from "@/components/layout/user-menu"
+import { HeaderSearch } from "@/components/layout/header-search"
 
 type Variant = "default" | "minimal"
 type NavLink = { href: string; label: string; exact?: boolean }
@@ -76,40 +77,40 @@ export function SiteHeader({
   const links = useNavLinks(user)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-background/65">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-sm backdrop-blur supports-backdrop-filter:bg-card/80">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         {variant === "minimal" ? (
-          <>
+          <div className="flex w-full items-center justify-between">
             <Brand />
             <LocaleSwitch />
-          </>
+          </div>
         ) : (
           <>
-            <div className="flex items-center gap-6">
-              <Brand />
-              <nav className="hidden items-center gap-1 md:flex">
-                {links.map((link) => {
-                  const active = isRouteActive(pathname, link.href, link.exact)
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                        active
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
+            <Brand />
 
-            <div className="flex items-center gap-2">
+            <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+              {links.map((link) => {
+                const active = isRouteActive(pathname, link.href, link.exact)
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
+            </nav>
+
+            <div className="flex items-center gap-2 md:gap-3">
+              <HeaderSearch className="hidden w-56 lg:block" />
               <div className="hidden items-center gap-2 md:flex">
                 <LocaleSwitch />
                 {isLoading ? (
@@ -158,6 +159,10 @@ function MobileNav({
           <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
           <Brand onNavigate={() => setOpen(false)} />
         </SheetHeader>
+
+        <div className="px-4">
+          <HeaderSearch onNavigate={() => setOpen(false)} />
+        </div>
 
         {user ? (
           <div className="mx-4 rounded-lg border border-border bg-muted/40 px-3 py-2.5">

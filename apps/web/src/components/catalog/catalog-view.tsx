@@ -96,26 +96,33 @@ export function CatalogView() {
   }
 
   return (
-    <>
-      <CatalogFilters value={filters} onApply={applyFilters} />
-      <div className="mb-5 flex items-center justify-end gap-2">
-        <Label htmlFor="catalog-sort" className="text-muted-foreground">
-          {t("sort.label")}
-        </Label>
-        <Select value={filters.sort} onValueChange={(next) => handleSortChange(next as ListingSort)}>
-          <SelectTrigger id="catalog-sort" className="h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {LISTING_SORTS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {t(`sort.${option}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+      <aside className="lg:sticky lg:top-24">
+        <CatalogFilters value={filters} onApply={applyFilters} />
+      </aside>
+      <div>
+        <div className="mb-5 flex items-center justify-end gap-2">
+          <Label htmlFor="catalog-sort" className="text-muted-foreground">
+            {t("sort.label")}
+          </Label>
+          <Select
+            value={filters.sort}
+            onValueChange={(next) => handleSortChange(next as ListingSort)}
+          >
+            <SelectTrigger id="catalog-sort" className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LISTING_SORTS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(`sort.${option}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <CatalogBrowser filters={filters} />
       </div>
-      <CatalogBrowser filters={filters} />
-    </>
+    </div>
   )
 }
