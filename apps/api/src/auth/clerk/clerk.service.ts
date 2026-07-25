@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -21,23 +22,38 @@ export interface ClerkProfile {
 export class ClerkService {
   private readonly secretKey: string;
   private readonly webhookSecret: string;
-  // The frontend origin(s) Clerk mints tokens for. Passed to verifyToken so a
-  // token minted for a different app on the same Clerk instance (a different `azp`)
-  // is rejected here. Empty (nothing configured) => the check is skipped.
+  // Web origin(s) allowed to mint the tokens we accept, from CLERK_AUTHORIZED_PARTIES
+  // (comma-separated). Passed to verifyToken to reject a token minted for a different
+  // app on the same Clerk instance (a different `azp`). Empty (unset) => the check is
+  // skipped and the token is trusted by its signature alone, which already binds it
+  // to this Clerk instance.
   private readonly authorizedParties: string[];
+  private readonly logger = new Logger(ClerkService.name);
   private client?: ClerkClient;
 
   constructor(config: ConfigService) {
     this.secretKey = config.get<string>('CLERK_SECRET_KEY') ?? '';
     this.webhookSecret = config.get<string>('CLERK_WEBHOOK_SECRET') ?? '';
-    const appBaseUrl = config.get<string>('APP_BASE_URL') ?? '';
-    const corsOrigins = (config.get<string>('CORS_ORIGINS') ?? '')
+    // Read the allowed origins only from CLERK_AUTHORIZED_PARTIES (not CORS_ORIGINS)
+    // so the azp check is opt-in: unset => empty => skipped. Trailing slashes are
+    // stripped so `https://app.example.com/` and `https://app.example.com` match.
+    this.authorizedParties = (config.get<string>('CLERK_AUTHORIZED_PARTIES') ?? '')
       .split(',')
-      .map((origin) => origin.trim())
+      .map((origin) => origin.trim().replace(/\/+$/, ''))
       .filter(Boolean);
-    this.authorizedParties = [appBaseUrl, ...corsOrigins]
-      .filter(Boolean)
-      .map((origin) => origin.replace(/\/+$/, ''));
+    // Without an azp allow-list a token minted for a different app on the SAME Clerk
+    // instance would be accepted. Harmless for a single-app instance, but warn in
+    // production so it's a deliberate choice rather than silent drift.
+    if (
+      config.get<string>('NODE_ENV') === 'production' &&
+      this.secretKey &&
+      this.authorizedParties.length === 0
+    ) {
+      this.logger.warn(
+        'CLERK_AUTHORIZED_PARTIES is unset: Clerk tokens are accepted by signature only ' +
+          '(no azp allow-list). Set it if this Clerk instance is shared with another app.',
+      );
+    }
   }
 
   isConfigured(): boolean {
@@ -55,21 +71,31 @@ export class ClerkService {
   }
 
   // Verify a Clerk session JWT and return the Clerk user id (the `sub` claim).
-  // verifyToken resolves with { data } | { errors } rather than throwing, so both
-  // an invalid signature and a missing subject map to a 401.
+  // verifyToken usually resolves with { data } | { errors }, but it THROWS on a
+  // malformed token or a failed `azp` check — so wrap it and map every failure
+  // (thrown or returned) to a 401, never letting one escape as a 500.
   async verifySessionToken(token: string): Promise<string> {
     if (!this.secretKey) {
       throw new ServiceUnavailableException('Clerk is not configured');
     }
+    // Normalize a thrown error to null (don't annotate `result`: the SDK's return
+    // type resolves inconsistently across the project's tsc and ts-jest, so we let
+    // it infer and read `data`/`errors` defensively). Any failure => 401.
     const result = await verifyToken(token, {
       secretKey: this.secretKey,
-      // Omit when empty so verifyToken skips the check (local dev without origins
-      // configured) rather than rejecting every token.
+      // Omit when empty so verifyToken skips the check (default: trust the
+      // signature) rather than rejecting every token.
       ...(this.authorizedParties.length ? { authorizedParties: this.authorizedParties } : {}),
+    }).catch((error: unknown) => {
+      // Log (never the token) so a bad secret / Clerk outage / azp mismatch is
+      // visible instead of silent — the client still just gets a 401.
+      this.logger.warn(
+        `Clerk token verification failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
+      return null;
     });
-    // Access `sub` defensively: the SDK's JwtPayload type resolves inconsistently
-    // across the project's tsc and ts-jest, so we don't rely on its shape here.
-    const sub = result.errors ? undefined : (result.data as { sub?: string } | undefined)?.sub;
+    const sub =
+      !result || result.errors ? undefined : (result.data as { sub?: string } | undefined)?.sub;
     if (!sub) {
       throw new UnauthorizedException('Invalid Clerk session token');
     }

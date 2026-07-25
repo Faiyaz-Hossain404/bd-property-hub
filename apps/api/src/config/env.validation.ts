@@ -41,6 +41,13 @@ const envSchema = z
     CLERK_SECRET_KEY: z.string().optional(),
     CLERK_WEBHOOK_SECRET: z.string().optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
+    // Optional: comma-separated web origins allowed to mint the Clerk tokens we
+    // accept (checked against the JWT `azp` claim). Configured separately from CORS
+    // so the check can be enabled in production without coupling to CORS. When unset
+    // the check is skipped and a token is trusted by its signature, which already
+    // binds it to this Clerk instance — the sensible default for local dev and a
+    // single-app instance. Example: https://app.example.com,https://www.example.com
+    CLERK_AUTHORIZED_PARTIES: z.string().optional(),
   })
   .passthrough();
 
