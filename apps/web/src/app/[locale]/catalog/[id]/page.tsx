@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 
-import { CatalogHeader } from '@/components/catalog/catalog-header';
 import { ListingDetail } from '@/components/catalog/listing-detail';
+import { SiteHeaderAuto } from '@/components/layout/site-header';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -38,8 +38,8 @@ export default async function ListingDetailPage({ params, searchParams }: PagePa
 
   return (
     <div className="min-h-screen bg-background">
-      <CatalogHeader />
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <SiteHeaderAuto />
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <ListingDetail id={id} backQuery={backQuery} />
       </main>
     </div>

@@ -5,8 +5,19 @@
   },
   "nav": {
     "brand": "BD Property Hub",
+    "home": "Home",
+    "listings": "Listings",
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "superAdmin": "Super Admin",
     "browse": "Browse",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "account": "Account menu",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "search": "Search properties",
+    "searchPlaceholder": "Search properties…"
   },
   "auth": {
     "loginTitle": "Welcome back",
@@ -322,8 +333,13 @@
     "retry": "Try again",
     "empty": "No properties are listed yet. Please check back soon.",
     "emptyFiltered": "No properties match these filters. Try widening your search.",
+    "previewHeading": "Property preview",
+    "previewEmpty": "Select a property to see its details here.",
     "filters": {
       "title": "Filters",
+      "locationGroup": "Location",
+      "propertyGroup": "Property",
+      "priceGroup": "Price range",
       "search": "Search",
       "searchPlaceholder": "Search by title",
       "district": "District",

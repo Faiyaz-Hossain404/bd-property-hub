@@ -1,13 +1,11 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DotPattern } from '@/components/ui/dot-pattern';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 import { HeroSearch } from '@/components/home/hero-search';
+import { SiteHeaderAuto } from '@/components/layout/site-header';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -23,43 +21,22 @@ export default async function HomePage({ params }: PageParams) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('home');
-  const nav = await getTranslations('nav');
-
-  const otherLocale: Locale = locale === 'bn' ? 'en' : 'bn';
-  const otherLabel = otherLocale === 'bn' ? 'বাংলা' : 'English';
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <span className="font-heading text-lg font-bold tracking-tight text-foreground">
-          {nav('brand')}
-        </span>
-        <nav className="flex items-center gap-2 text-sm font-medium">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/catalog">{nav('browse')}</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/" locale={otherLocale}>
-              {otherLabel}
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/login">{nav('signIn')}</Link>
-          </Button>
-        </nav>
-      </header>
+      <SiteHeaderAuto />
 
       <main>
         <section className="relative overflow-hidden">
           {/* Decorative dotted texture; currentColor (text-olive) tints the dots. */}
           <DotPattern
             className={cn(
-              'text-olive/25',
+              'text-olive/20',
               'mask-[radial-gradient(560px_circle_at_center,white,transparent)]',
             )}
           />
 
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:py-28 lg:px-8">
             <div>
               <div className="inline-flex items-center rounded-full border border-border bg-card/70 px-4 py-1.5 shadow-sm backdrop-blur">
                 <AnimatedShinyText className="text-sm font-medium text-clay">

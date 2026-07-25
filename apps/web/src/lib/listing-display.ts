@@ -74,6 +74,51 @@ export function priceLabel(
   return label;
 }
 
+// The present attributes as translated "chips" (rooms · baths · sqft · land ·
+// facing), skipping anything the seller left unset. `t` is the catalog translator
+// (next-intl) and takes ICU values. Shared by the detail page and the catalog
+// preview rail so both read identically. `key` is a stable React key.
+type AttributeChip = { key: string; label: string };
+
+export function attributeChips(
+  attributes: PublicListing['attributes'],
+  locale: string,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): AttributeChip[] {
+  const chips: AttributeChip[] = [];
+  if (attributes.rooms != null) {
+    chips.push({ key: 'rooms', label: t('attributes.rooms', { count: attributes.rooms }) });
+  }
+  if (attributes.washrooms != null) {
+    chips.push({
+      key: 'washrooms',
+      label: t('attributes.washrooms', { count: attributes.washrooms }),
+    });
+  }
+  if (attributes.areaSqft != null) {
+    chips.push({
+      key: 'areaSqft',
+      label: t('attributes.areaSqft', { value: formatNumber(attributes.areaSqft, locale) }),
+    });
+  }
+  if (attributes.landSizeValue != null && attributes.landSizeUnit) {
+    chips.push({
+      key: 'landSize',
+      label: t('attributes.landSize', {
+        value: formatNumber(attributes.landSizeValue, locale),
+        unit: t(`landUnits.${attributes.landSizeUnit}`),
+      }),
+    });
+  }
+  if (attributes.facing) {
+    chips.push({
+      key: 'facing',
+      label: t('attributes.facing', { facing: t(`facings.${attributes.facing}`) }),
+    });
+  }
+  return chips;
+}
+
 // Cover photo for a card: the lowest-position `photo`-kind item. Media is already
 // `ready`-only in the public projection. Returns null when the listing has none.
 export function coverPhoto(media: PublicListingMedia[]): PublicListingMedia | null {

@@ -16,8 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DotPattern } from "@/components/ui/dot-pattern"
-import { LocaleSwitch } from "@/components/auth/locale-switch"
-import { LogoutButton } from "@/components/dashboard/logout-button"
+import { SiteHeader } from "@/components/layout/site-header"
 import { ListingsSection } from "@/components/dashboard/listings-section"
 import { SavedSection } from "@/components/dashboard/saved-section"
 import { SellerVerificationSection } from "@/components/dashboard/seller-verification-section"
@@ -53,17 +52,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <span className="font-heading text-lg font-bold tracking-tight text-foreground">
-            {t("brand")}
-          </span>
-          <div className="flex items-center gap-2">
-            <LocaleSwitch />
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <SiteHeader user={user} />
 
       <main className="relative overflow-hidden">
         <DotPattern
@@ -73,7 +62,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           )}
         />
 
-        <div className="relative mx-auto max-w-6xl px-6 py-12 md:py-16">
+        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
             {t("welcome", { name: user.name })}
           </h1>
@@ -115,7 +104,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           {isModerator ? (
             <Link
               href="/admin"
-              className="group mt-10 flex max-w-2xl items-center justify-between gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground ring-1 ring-foreground/10 transition-colors hover:bg-primary/90"
+              className="group mt-10 flex max-w-2xl items-center justify-between gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground shadow-sm ring-1 ring-primary/20 transition-colors hover:bg-primary/90"
             >
               <span className="flex items-center gap-3">
                 <Gauge className="size-5" />

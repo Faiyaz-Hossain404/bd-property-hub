@@ -10,7 +10,7 @@ import { Link } from "@/i18n/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  formatNumber,
+  attributeChips,
   listingDescription,
   listingTitle,
   locationLabel,
@@ -105,24 +105,7 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
   const place = locationLabel(listing.location, locale)
   const price = priceLabel(listing.pricing, locale, t)
   const photos = orderedPhotos(listing.media)
-  const { attributes } = listing
-
-  // Build the present attributes into translated chips, skipping anything unset.
-  const chips: string[] = []
-  if (attributes.rooms != null) chips.push(t("attributes.rooms", { count: attributes.rooms }))
-  if (attributes.washrooms != null)
-    chips.push(t("attributes.washrooms", { count: attributes.washrooms }))
-  if (attributes.areaSqft != null)
-    chips.push(t("attributes.areaSqft", { value: formatNumber(attributes.areaSqft, locale) }))
-  if (attributes.landSizeValue != null && attributes.landSizeUnit)
-    chips.push(
-      t("attributes.landSize", {
-        value: formatNumber(attributes.landSizeValue, locale),
-        unit: t(`landUnits.${attributes.landSizeUnit}`),
-      }),
-    )
-  if (attributes.facing)
-    chips.push(t("attributes.facing", { facing: t(`facings.${attributes.facing}`) }))
+  const chips = attributeChips(listing.attributes, locale, t)
 
   return (
     <div className="flex flex-col gap-6">
@@ -161,10 +144,10 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
               <ul className="mt-2 flex flex-wrap gap-2">
                 {chips.map((chip) => (
                   <li
-                    key={chip}
+                    key={chip.key}
                     className="rounded-full bg-muted px-3 py-1 text-sm text-foreground"
                   >
-                    {chip}
+                    {chip.label}
                   </li>
                 ))}
               </ul>

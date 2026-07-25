@@ -196,162 +196,184 @@ export function CatalogFilters({ value, onApply }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-8 rounded-xl border border-border/60 bg-muted/30 p-4"
+      className="rounded-2xl border border-border bg-card p-5 shadow-sm"
       aria-label={t("filters.title")}
     >
-      <div className="mb-4 grid gap-1.5">
-        <Label htmlFor="filter-search">{t("filters.search")}</Label>
-        <Input
-          id="filter-search"
-          type="search"
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder={t("filters.searchPlaceholder")}
-          maxLength={80}
-          className="h-9"
-        />
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="font-heading text-sm font-semibold text-foreground">{t("filters.title")}</h2>
+        {hasActiveFilter ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded text-xs font-medium text-primary transition-colors outline-none hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t("filters.clear")}
+          </button>
+        ) : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5">
         <div className="grid gap-1.5">
-          <Label htmlFor="filter-district">{t("filters.district")}</Label>
-          <Select
-            value={districtId || ALL_VALUE}
-            onValueChange={(next) => handleDistrictChange(next === ALL_VALUE ? "" : next)}
-            disabled={geoError}
-          >
-            <SelectTrigger id="filter-district" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-              {districtGroups.map((group) => (
-                <SelectGroup key={group.division.id}>
-                  <SelectLabel>
-                    {locale === "bn" ? group.division.nameBn : group.division.nameEn}
-                  </SelectLabel>
-                  {group.districts.map((district) => (
-                    <SelectItem key={district.id} value={district.id}>
-                      {locale === "bn" ? district.nameBn : district.nameEn}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-city-upazila">{t("filters.cityUpazila")}</Label>
-          <Select
-            value={cityUpazilaId || ALL_VALUE}
-            onValueChange={(next) => setCityUpazilaId(next === ALL_VALUE ? "" : next)}
-            disabled={geoError || !districtId}
-          >
-            <SelectTrigger id="filter-city-upazila" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-              {citiesUpazilas.map((row) => (
-                <SelectItem key={row.id} value={row.id}>
-                  {locale === "bn" ? row.nameBn : row.nameEn}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-transaction-type">{t("filters.transactionType")}</Label>
-          <Select
-            value={transactionType || ALL_VALUE}
-            onValueChange={(next) =>
-              setTransactionType((next === ALL_VALUE ? "" : next) as typeof transactionType)
-            }
-          >
-            <SelectTrigger id="filter-transaction-type" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-              {TRANSACTION_TYPES.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {t(`transactionTypes.${option}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-asset-type">{t("filters.assetType")}</Label>
-          <Select
-            value={assetType || ALL_VALUE}
-            onValueChange={(next) =>
-              setAssetType((next === ALL_VALUE ? "" : next) as typeof assetType)
-            }
-          >
-            <SelectTrigger id="filter-asset-type" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-              {ASSET_TYPES.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {t(`assetTypes.${option}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-price-min">{t("filters.priceMin")}</Label>
+          <Label htmlFor="filter-search">{t("filters.search")}</Label>
           <Input
-            id="filter-price-min"
-            inputMode="numeric"
-            value={priceMin}
-            onChange={(event) => setPriceMin(event.target.value)}
-            placeholder={t("filters.pricePlaceholder")}
+            id="filter-search"
+            type="search"
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+            placeholder={t("filters.searchPlaceholder")}
+            maxLength={80}
             className="h-9"
           />
         </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="filter-price-max">{t("filters.priceMax")}</Label>
-          <Input
-            id="filter-price-max"
-            inputMode="numeric"
-            value={priceMax}
-            onChange={(event) => setPriceMax(event.target.value)}
-            placeholder={t("filters.pricePlaceholder")}
-            className="h-9"
-          />
+        <div className="grid gap-3">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("filters.locationGroup")}
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="filter-district">{t("filters.district")}</Label>
+            <Select
+              value={districtId || ALL_VALUE}
+              onValueChange={(next) => handleDistrictChange(next === ALL_VALUE ? "" : next)}
+              disabled={geoError}
+            >
+              <SelectTrigger id="filter-district" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+                {districtGroups.map((group) => (
+                  <SelectGroup key={group.division.id}>
+                    <SelectLabel>
+                      {locale === "bn" ? group.division.nameBn : group.division.nameEn}
+                    </SelectLabel>
+                    {group.districts.map((district) => (
+                      <SelectItem key={district.id} value={district.id}>
+                        {locale === "bn" ? district.nameBn : district.nameEn}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="filter-city-upazila">{t("filters.cityUpazila")}</Label>
+            <Select
+              value={cityUpazilaId || ALL_VALUE}
+              onValueChange={(next) => setCityUpazilaId(next === ALL_VALUE ? "" : next)}
+              disabled={geoError || !districtId}
+            >
+              <SelectTrigger id="filter-city-upazila" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+                {citiesUpazilas.map((row) => (
+                  <SelectItem key={row.id} value={row.id}>
+                    {locale === "bn" ? row.nameBn : row.nameEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("filters.propertyGroup")}
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="filter-transaction-type">{t("filters.transactionType")}</Label>
+            <Select
+              value={transactionType || ALL_VALUE}
+              onValueChange={(next) =>
+                setTransactionType((next === ALL_VALUE ? "" : next) as typeof transactionType)
+              }
+            >
+              <SelectTrigger id="filter-transaction-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+                {TRANSACTION_TYPES.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(`transactionTypes.${option}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="filter-asset-type">{t("filters.assetType")}</Label>
+            <Select
+              value={assetType || ALL_VALUE}
+              onValueChange={(next) =>
+                setAssetType((next === ALL_VALUE ? "" : next) as typeof assetType)
+              }
+            >
+              <SelectTrigger id="filter-asset-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
+                {ASSET_TYPES.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(`assetTypes.${option}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("filters.priceGroup")}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="filter-price-min">{t("filters.priceMin")}</Label>
+              <Input
+                id="filter-price-min"
+                inputMode="numeric"
+                value={priceMin}
+                onChange={(event) => setPriceMin(event.target.value)}
+                placeholder={t("filters.pricePlaceholder")}
+                className="h-9"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="filter-price-max">{t("filters.priceMax")}</Label>
+              <Input
+                id="filter-price-max"
+                inputMode="numeric"
+                value={priceMax}
+                onChange={(event) => setPriceMax(event.target.value)}
+                placeholder={t("filters.pricePlaceholder")}
+                className="h-9"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {geoError ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p role="alert" className="mt-4 text-sm text-destructive">
           {t("filters.geoError")}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
+        <p role="alert" className="mt-4 text-sm text-destructive">
           {error}
         </p>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-2">
-        <Button type="submit" size="sm">
-          {t("filters.apply")}
-        </Button>
-        {hasActiveFilter ? (
-          <Button type="button" size="sm" variant="ghost" onClick={handleClear}>
-            {t("filters.clear")}
-          </Button>
-        ) : null}
-      </div>
+      <Button type="submit" size="sm" className="mt-5 w-full">
+        {t("filters.apply")}
+      </Button>
     </form>
   )
 }
