@@ -48,6 +48,12 @@ const envSchema = z
     // binds it to this Clerk instance — the sensible default for local dev and a
     // single-app instance. Example: https://app.example.com,https://www.example.com
     CLERK_AUTHORIZED_PARTIES: z.string().optional(),
+    // Email that is automatically granted the super_admin role when it signs in
+    // (password or Clerk) or registers. Optional: unset => no auto-elevation. The
+    // role is ADDED (existing roles are kept) and is never auto-revoked — remove it
+    // from the admin panel. Compared case-insensitively to the account's email.
+    // Validated as an email so a typo fails fast at boot.
+    SUPER_ADMIN_EMAIL: z.string().email().optional(),
   })
   .passthrough();
 

@@ -42,6 +42,10 @@ export class ClerkAuthProvider implements AuthProvider {
     if (revokePriorSessions) {
       await this.sessions.revokeAllForUser(user.id);
     }
-    return this.users.toPublic(user);
+    // Auto-grant the super_admin role to the configured owner email (no-op for
+    // everyone else). After the suspended/deleted denial above, so a banned
+    // account is never elevated.
+    const elevated = await this.users.ensureSuperAdmin(user);
+    return this.users.toPublic(elevated);
   }
 }

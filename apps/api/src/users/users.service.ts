@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import type { Locale, PublicUser, Role } from '@bdph/types';
@@ -34,7 +35,18 @@ function isDuplicateKeyError(error: unknown): boolean {
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<UserDocument>) {}
+  private readonly logger = new Logger(UsersService.name);
+  // The email that auto-earns the super_admin role, normalized once (trimmed and
+  // lowercased to match how account emails are stored). Null when SUPER_ADMIN_EMAIL
+  // is unset, which disables auto-elevation entirely.
+  private readonly superAdminEmail: string | null;
+
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    config: ConfigService,
+  ) {
+    this.superAdminEmail = config.get<string>('SUPER_ADMIN_EMAIL')?.trim().toLowerCase() || null;
+  }
 
   async createLocal(input: CreateLocalInput): Promise<UserDocument> {
     const existing = await this.userModel.exists({ email: input.email });
@@ -181,6 +193,37 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     return updated;
+  }
+
+  // Grant the configured super admin their role once their email is proven owned.
+  // Idempotent and self-annealing: only the account whose email matches
+  // SUPER_ADMIN_EMAIL is affected, the role is ADDED via addRole ($addToSet, existing
+  // roles preserved), and once present a repeat call is a no-op. Returns the same
+  // document — re-read with the role when elevation happened — so the caller's
+  // toPublic reflects it immediately.
+  //
+  // SECURITY: elevation requires a VERIFIED, ACTIVE account. Registration mints a
+  // session BEFORE the email is verified, so without this gate anyone who knew the
+  // owner's email could self-register it (with their own password) and instantly
+  // become super_admin before the real owner ever signs up. Requiring emailVerified
+  // means the grant only happens once inbox ownership is proven (the email link, or
+  // a Clerk-verified identity); requiring 'active' keeps a suspended/deleted account
+  // from being (re-)elevated. A no-op (returns the input unchanged) when
+  // SUPER_ADMIN_EMAIL is unset, the account isn't verified+active, the email doesn't
+  // match, or the role is already held.
+  async ensureSuperAdmin(user: UserDocument): Promise<UserDocument> {
+    if (
+      !this.superAdminEmail ||
+      !user.emailVerified ||
+      user.status !== 'active' ||
+      user.email.toLowerCase() !== this.superAdminEmail ||
+      user.roles.includes('super_admin')
+    ) {
+      return user;
+    }
+    const elevated = await this.addRole(user.id, 'super_admin');
+    this.logger.log(`Granted super_admin to user ${elevated.id} (email matches SUPER_ADMIN_EMAIL)`);
+    return elevated;
   }
 
   toPublic(user: UserDocument): PublicUser {

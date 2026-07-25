@@ -63,6 +63,13 @@ export class AccountFlowsService {
       throw new BadRequestException('This verification link is invalid or has expired.');
     }
     await this.users.markEmailVerified(userId);
+    // The email is now proven owned — the earliest point the configured owner can
+    // safely be granted super_admin. ensureSuperAdmin re-checks verified+active, so
+    // this only elevates a legitimately verified account and is a no-op otherwise.
+    const user = await this.users.findById(userId);
+    if (user) {
+      await this.users.ensureSuperAdmin(user);
+    }
   }
 
   // Generic by design — never reveals whether the email maps to an account or

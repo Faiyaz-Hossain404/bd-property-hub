@@ -21,6 +21,11 @@ export class LocalAuthProvider implements AuthProvider {
       locale: input.locale,
       passwordHash,
     });
+    // NOTE: deliberately no super-admin elevation here. A freshly registered account
+    // is not yet email-verified, and registration issues a session immediately — so
+    // elevating on an unverified email would let anyone who knows the configured
+    // owner address self-register into super_admin. The owner is elevated once they
+    // verify their email (AccountFlowsService.verifyEmail) or on their next sign-in.
     return this.users.toPublic(user);
   }
 
@@ -40,6 +45,10 @@ export class LocalAuthProvider implements AuthProvider {
     if (user.status === 'deleted') {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.users.toPublic(user);
+    // Auto-grant the super_admin role to the configured owner email on sign-in
+    // (no-op for everyone else). Runs after the status checks so a suspended or
+    // deleted account is rejected before any elevation.
+    const elevated = await this.users.ensureSuperAdmin(user);
+    return this.users.toPublic(elevated);
   }
 }
