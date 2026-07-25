@@ -31,6 +31,17 @@ describe('ClerkService.verifySessionToken', () => {
     expect(mockVerifyToken).toHaveBeenCalledWith('tok', { secretKey: 'sk_test' });
   });
 
+  it('returns the subject when verifyToken resolves to a bare payload (real SDK shape)', async () => {
+    // @clerk/backend@3.12.0 resolves verifyToken to the decoded JwtPayload DIRECTLY
+    // (sub at the top level), not the { data } envelope its types describe. The other
+    // tests mock the { data } shape, which hid a bug where every valid token 401'd
+    // because the code only read result.data.sub. This asserts the real shape works.
+    mockVerifyToken.mockResolvedValue({ sub: 'user_123', iss: 'https://x.clerk.accounts.dev' });
+    const service = makeService({ CLERK_SECRET_KEY: 'sk_test' });
+
+    await expect(service.verifySessionToken('tok')).resolves.toBe('user_123');
+  });
+
   it('rejects a token that fails verification', async () => {
     mockVerifyToken.mockResolvedValue({ errors: [new Error('bad signature')] });
     const service = makeService({ CLERK_SECRET_KEY: 'sk_test' });
