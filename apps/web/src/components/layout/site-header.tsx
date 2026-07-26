@@ -29,19 +29,22 @@ type NavLink = { href: string; label: string; exact?: boolean }
 
 // The visible links, gated by role: everyone sees Home + Listings; a signed-in
 // user also sees the /dashboard tab; staff additionally see the /admin tab.
-// Deliberate label swap (per request): the /dashboard tab DISPLAYS "Admin (prime)"
-// and the /admin tab DISPLAYS "Dashboard". Only the visible label strings are
-// swapped — the hrefs, the isStaff/isAdminPrime gates, and the server-side route
-// guards are all unchanged.
+// Deliberate label swap, scoped to Admin (prime) ONLY: for a prime user the
+// /dashboard tab DISPLAYS "Admin (prime)" and the /admin tab DISPLAYS "Dashboard".
+// Everyone else — buyers, sellers, standard admins — sees the normal labels, so a
+// non-prime user is never shown an "Admin (prime)" tab. Only the visible label
+// strings change; the hrefs, the isStaff/isAdminPrime gates, and the server-side
+// route guards are all unchanged.
 function useNavLinks(user: PublicUser | null): NavLink[] {
   const t = useTranslations("nav")
+  const isPrime = isAdminPrime(user)
   const links: NavLink[] = [
     { href: "/", label: t("home"), exact: true },
     { href: "/catalog", label: t("listings") },
   ]
-  if (user) links.push({ href: "/dashboard", label: t("superAdmin") })
+  if (user) links.push({ href: "/dashboard", label: isPrime ? t("superAdmin") : t("dashboard") })
   if (isStaff(user)) {
-    links.push({ href: "/admin", label: isAdminPrime(user) ? t("dashboard") : t("admin") })
+    links.push({ href: "/admin", label: isPrime ? t("dashboard") : t("admin") })
   }
   return links
 }
