@@ -31,6 +31,8 @@ import { ListingStatusHistory } from "./listing-status-history"
 import { ListingWithdraw } from "./listing-withdraw"
 import { ListingRestore } from "./listing-restore"
 import { locationLabel, priceLabel } from "@/lib/listing-display"
+import { WhatsAppButton } from "@/components/contact/whatsapp-button"
+import { WHATSAPP_SELLER_SUPPORT } from "@/lib/contact"
 
 const SELLER_ROLES = ["seller", "admin", "admin_prime"] as const
 const SUBMITTABLE_STATUSES = ["draft", "rejected"] as const
@@ -51,6 +53,7 @@ function statusVariant(status: ListingPublicationStatus): "default" | "outline" 
 
 export function ListingsSection({ user, onUserRefresh }: Props) {
   const t = useTranslations("dashboard.listings")
+  const tWhatsapp = useTranslations("whatsapp")
   const isSeller = user.roles.some((role) =>
     SELLER_ROLES.includes(role as (typeof SELLER_ROLES)[number]),
   )
@@ -60,7 +63,19 @@ export function ListingsSection({ user, onUserRefresh }: Props) {
 
   return (
     <div className="mt-10 max-w-2xl">
-      <h2 className="font-heading text-xl font-semibold text-foreground">{t("sectionTitle")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading text-xl font-semibold text-foreground">{t("sectionTitle")}</h2>
+        {/* Seller support → WhatsApp seller desk. Only shown to actual sellers. */}
+        {isSeller ? (
+          <WhatsAppButton
+            number={WHATSAPP_SELLER_SUPPORT}
+            label={tWhatsapp("sellerCta")}
+            message={tWhatsapp("sellerSupport")}
+            variant="outline"
+            size="sm"
+          />
+        ) : null}
+      </div>
       {isSeller ? (
         <DraftWorkspace t={t} kycVerified={kycVerified} />
       ) : (

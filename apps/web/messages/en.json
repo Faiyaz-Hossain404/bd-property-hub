@@ -445,7 +445,14 @@
     "getStartedHeading": "Get started",
     "getStartedBlurb": "Browse verified listings and save the ones you love.",
     "browseCta": "Browse listings",
+    "contactHeading": "Contact",
     "rights": "All rights reserved."
+  },
+  "whatsapp": {
+    "inquireCta": "Inquire on WhatsApp",
+    "buyerInquiry": "Hi, I have an inquiry about the property: {title}",
+    "sellerCta": "Seller support",
+    "sellerSupport": "Hi, I'm a seller on BD Property Hub and I need some help."
   },
   "admin": {
     "brand": "BD Property Hub",
