@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { DotPattern } from '@/components/ui/dot-pattern';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
+import BlurText from '@/components/ui/BlurText';
 import { HeroSearch } from '@/components/home/hero-search';
 import { SiteHeaderAuto } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
@@ -45,8 +46,29 @@ export default async function HomePage({ params }: PageParams) {
                 </AnimatedShinyText>
               </div>
 
-              <h1 className="mt-6 font-heading text-4xl leading-[1.05] font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                {t('headline')} <span className="text-clay">{t('headlineAccent')}</span>
+              {/* Animated blur-in hero heading. The h1 keeps a plain aria-label
+                  (the real text) for a clean screen-reader announcement and SEO,
+                  while the two BlurText spans (aria-hidden) carry the visual
+                  animation — the second keeps the honey-gold accent. */}
+              <h1
+                className="mt-6 font-heading text-4xl leading-[1.05] font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+                aria-label={`${t('headline')} ${t('headlineAccent')}`}
+              >
+                <BlurText
+                  as="span"
+                  text={t('headline')}
+                  animateBy="words"
+                  delay={90}
+                  aria-hidden
+                />{' '}
+                <BlurText
+                  as="span"
+                  text={t('headlineAccent')}
+                  className="text-clay"
+                  animateBy="words"
+                  delay={90}
+                  aria-hidden
+                />
               </h1>
 
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
