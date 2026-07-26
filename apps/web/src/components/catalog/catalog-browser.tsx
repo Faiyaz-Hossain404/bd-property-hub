@@ -19,11 +19,13 @@ const RAIL_QUERY = "(min-width: 1280px)"
 
 // Client-side, cursor-paginated catalog with a live preview rail. Fetches page 1
 // on mount (via useListings/useInfiniteQuery) and reloads it whenever the active
-// filters change — the parent (CatalogView) remounts this component with a
-// filters-derived `key`, so `selectedId` naturally resets to the new search's
-// first result. TanStack Query caches per distinct `filters` value, so
-// re-applying a filter combo already seen this session (e.g. the back button)
-// renders instantly from cache instead of re-fetching.
+// filters change. A stale `selectedId` from the previous search self-corrects:
+// `selected` below falls back to the first result when the id isn't in the new
+// list, so no remount/key is needed to reset the preview (a key would tear down
+// useSavedListings mid-save and force a redundant saved-ids refetch). TanStack
+// Query caches per distinct `filters` value, so re-applying a filter combo
+// already seen this session (e.g. the back button) renders instantly from cache
+// instead of re-fetching.
 export function CatalogBrowser({ filters }: { filters: CatalogFilterValue }) {
   const t = useTranslations("catalog")
   const [selectedId, setSelectedId] = useState<string | null>(null)

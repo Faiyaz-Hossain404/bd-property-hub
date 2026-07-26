@@ -52,12 +52,23 @@ function patchCachedUser(
   )
 }
 
+// A status/role change updates the user in place for instant feedback, then
+// invalidates every admin-users query so the active filtered view refetches
+// and RECONCILES membership: an in-place patch can flip a badge to "suspended"
+// but can't drop that row out of a `status=active` filter (the client doesn't
+// know the server-side predicate). The patch gives the immediate update; the
+// background refetch corrects which rows belong in each filtered bucket.
+function onUserMutated(queryClient: ReturnType<typeof useQueryClient>, updated: PublicUser) {
+  patchCachedUser(queryClient, updated)
+  void queryClient.invalidateQueries({ queryKey: [ADMIN_USERS_KEY] })
+}
+
 export function useSetAdminUserStatus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (vars: { userId: string; input: AdminUpdateUserStatusInput }) =>
       setAdminUserStatus(vars.userId, vars.input),
-    onSuccess: (updated) => patchCachedUser(queryClient, updated),
+    onSuccess: (updated) => onUserMutated(queryClient, updated),
   })
 }
 
@@ -66,6 +77,6 @@ export function useSetAdminUserRole() {
   return useMutation({
     mutationFn: (vars: { userId: string; input: AdminAssignRoleInput }) =>
       setAdminUserRole(vars.userId, vars.input),
-    onSuccess: (updated) => patchCachedUser(queryClient, updated),
+    onSuccess: (updated) => onUserMutated(queryClient, updated),
   })
 }

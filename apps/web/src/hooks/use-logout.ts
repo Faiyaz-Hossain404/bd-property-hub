@@ -2,6 +2,7 @@
 
 import { useTransition } from "react"
 import { useClerk } from "@clerk/nextjs"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { useRouter } from "@/i18n/navigation"
 import { logoutUser } from "@/lib/api"
@@ -14,6 +15,7 @@ import { logoutUser } from "@/lib/api"
 export function useLogout(): { logout: () => void; isPending: boolean } {
   const router = useRouter()
   const { signOut } = useClerk()
+  const queryClient = useQueryClient()
   const [isPending, startTransition] = useTransition()
 
   function logout() {
@@ -21,6 +23,12 @@ export function useLogout(): { logout: () => void; isPending: boolean } {
       try {
         await Promise.allSettled([logoutUser(), signOut()])
       } finally {
+        // Drop every cached query (admin user lists with names/emails/roles,
+        // browsed listings, etc.) so a different user signing in on the same
+        // tab can't be served the previous user's cached data. The QueryClient
+        // lives in the shared root layout and this sign-out is a client-side
+        // navigation, so it is never otherwise recreated between sessions.
+        queryClient.clear()
         router.replace("/login")
         router.refresh()
       }
