@@ -28,17 +28,20 @@ type Variant = "default" | "minimal"
 type NavLink = { href: string; label: string; exact?: boolean }
 
 // The visible links, gated by role: everyone sees Home + Listings; a signed-in
-// user also sees Dashboard; staff additionally see an Admin entry (labelled
-// "Super Admin" for a super admin). Server routes stay guarded regardless.
+// user also sees the /dashboard tab; staff additionally see the /admin tab.
+// Deliberate label swap (per request): the /dashboard tab DISPLAYS "Admin (prime)"
+// and the /admin tab DISPLAYS "Dashboard". Only the visible label strings are
+// swapped — the hrefs, the isStaff/isAdminPrime gates, and the server-side route
+// guards are all unchanged.
 function useNavLinks(user: PublicUser | null): NavLink[] {
   const t = useTranslations("nav")
   const links: NavLink[] = [
     { href: "/", label: t("home"), exact: true },
     { href: "/catalog", label: t("listings") },
   ]
-  if (user) links.push({ href: "/dashboard", label: t("dashboard") })
+  if (user) links.push({ href: "/dashboard", label: t("superAdmin") })
   if (isStaff(user)) {
-    links.push({ href: "/admin", label: isAdminPrime(user) ? t("superAdmin") : t("admin") })
+    links.push({ href: "/admin", label: isAdminPrime(user) ? t("dashboard") : t("admin") })
   }
   return links
 }
