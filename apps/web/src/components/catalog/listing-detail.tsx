@@ -17,6 +17,8 @@ import {
   orderedPhotos,
   priceLabel,
 } from "@/lib/listing-display"
+import { WhatsAppButton } from "@/components/contact/whatsapp-button"
+import { WHATSAPP_BUYER_SUPPORT } from "@/lib/contact"
 import { ListingGallery } from "./listing-gallery"
 import { ListingDetailSkeleton } from "./listing-detail-skeleton"
 import { SaveListingButton } from "./save-listing-button"
@@ -46,6 +48,7 @@ function BackLink({ label, backQuery }: { label: string; backQuery: string }) {
 
 export function ListingDetail({ id, backQuery }: { id: string; backQuery: string }) {
   const t = useTranslations("catalog")
+  const tWhatsapp = useTranslations("whatsapp")
   const locale = useLocale()
   const [state, setState] = useState<State>({ status: "loading" })
   const startedRef = useRef(false)
@@ -128,7 +131,17 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
 
           <p className="font-heading text-2xl font-bold text-clay">{price}</p>
 
-          <SaveListingButton listingId={listing.id} />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Buyer inquiry → WhatsApp buyer support desk, pre-filled with the
+                listing title so support has context. */}
+            <WhatsAppButton
+              number={WHATSAPP_BUYER_SUPPORT}
+              label={tWhatsapp("inquireCta")}
+              message={tWhatsapp("buyerInquiry", { title })}
+              size="sm"
+            />
+            <SaveListingButton listingId={listing.id} />
+          </div>
 
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPin className="size-4 shrink-0" />

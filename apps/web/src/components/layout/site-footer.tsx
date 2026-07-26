@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
+import { CONTACT_EMAIL } from "@/lib/contact"
 
 // Site-wide marketing footer for the public surfaces (home, catalog, listing
 // detail). Deep-charcoal ground, white headings, muted-gray links, and a
@@ -18,7 +19,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-white/10 bg-stone-950 text-stone-400">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1.2fr]">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr]">
           {/* Brand + tagline */}
           <div>
             <div className="flex items-center gap-2.5">
@@ -57,6 +58,19 @@ export function SiteFooter() {
             <Button asChild size="sm" className="mt-1 w-fit rounded-full">
               <Link href="/catalog">{t("browseCta")}</Link>
             </Button>
+          </div>
+
+          {/* Contact column */}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
+              {t("contactHeading")}
+            </h2>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="text-sm wrap-break-word text-stone-400 transition-colors hover:text-white"
+            >
+              {CONTACT_EMAIL}
+            </a>
           </div>
         </div>
 
