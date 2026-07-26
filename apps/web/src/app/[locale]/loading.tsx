@@ -27,8 +27,11 @@ export default function HomeLoading() {
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-2/3" />
           </div>
-          {/* search */}
-          <Skeleton className="mt-8 h-12 w-full max-w-md rounded-xl" />
+          {/* search — mirrors HeroSearch's stacked-below-sm / side-by-side-at-sm+ form */}
+          <div className="mt-8 flex max-w-xl flex-col gap-3 rounded-xl border bg-card p-3 shadow-lg sm:flex-row sm:items-center">
+            <Skeleton className="h-12 flex-1 rounded-md" />
+            <Skeleton className="h-12 w-full shrink-0 rounded-md sm:w-28" />
+          </div>
         </div>
 
         {/* stat cards */}
