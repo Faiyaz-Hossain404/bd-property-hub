@@ -121,7 +121,11 @@ export function CatalogView() {
             </SelectContent>
           </Select>
         </div>
-        <CatalogBrowser filters={filters} />
+        {/* Keyed by the filters so a new search/facet change remounts the
+            browser and resets its local selection state — the underlying
+            TanStack Query cache is unaffected by the remount, so a filter
+            combo already seen this session still renders instantly. */}
+        <CatalogBrowser key={toSearchString(filters)} filters={filters} />
       </div>
     </div>
   )

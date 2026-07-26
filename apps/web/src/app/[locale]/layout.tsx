@@ -5,6 +5,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing, type Locale } from '@/i18n/routing';
+import { QueryProvider } from '@/providers/query-provider';
 import '../globals.css';
 
 const latin = Inter({ subsets: ['latin'], variable: '--font-latin', display: 'swap' });
@@ -54,7 +55,9 @@ export default async function LocaleLayout({
     >
       <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
         <body>
-          <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+          <NextIntlClientProvider messages={messages}>
+            <QueryProvider>{children}</QueryProvider>
+          </NextIntlClientProvider>
         </body>
       </html>
     </ClerkProvider>

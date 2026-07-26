@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 import { useTranslations } from "next-intl"
 import { LoaderCircle } from "lucide-react"
 import {
@@ -9,12 +9,12 @@ import {
   USER_STATUSES,
   type AssignableRole,
   type PublicUser,
-  type Role,
   type UserStatus,
 } from "@bdph/types"
 
-import { ApiError, getAdminUsers, setAdminUserRole, setAdminUserStatus } from "@/lib/api"
+import { ApiError } from "@/lib/api"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useAdminUsers, useSetAdminUserRole, useSetAdminUserStatus } from "@/hooks/use-admin-users"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -86,64 +86,18 @@ export function UsersPanel() {
     role: "",
     status: "",
   })
-  const [users, setUsers] = useState<PublicUser[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState(false)
 
-  // (Re)load the first page whenever the applied filters change.
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setError(false)
-    getAdminUsers({
-      q: filters.q || null,
-      role: (filters.role || null) as Role | null,
-      status: (filters.status || null) as UserStatus | null,
-    })
-      .then((page) => {
-        if (!active) return
-        setUsers(page.data)
-        setCursor(page.page.nextCursor)
-      })
-      .catch(() => {
-        if (active) setError(true)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [filters])
+  // Caches per distinct filters value — re-applying a filter combo already seen
+  // this session (e.g. via back/forward) renders instantly from cache instead
+  // of re-fetching. The two mutations below (in UserRow) patch this cache
+  // directly, so a status/role change shows up immediately without a refetch.
+  const { data, isPending, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useAdminUsers(filters)
+  const users = data?.pages.flatMap((page) => page.data) ?? []
 
   function applySearch(event: FormEvent) {
     event.preventDefault()
     setFilters((prev) => ({ ...prev, q: queryInput.trim() }))
-  }
-
-  async function loadMore() {
-    if (!cursor) return
-    setLoadingMore(true)
-    try {
-      const page = await getAdminUsers({
-        cursor,
-        q: filters.q || null,
-        role: (filters.role || null) as Role | null,
-        status: (filters.status || null) as UserStatus | null,
-      })
-      setUsers((prev) => [...prev, ...page.data])
-      setCursor(page.page.nextCursor)
-    } catch {
-      setError(true)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
-
-  function replaceUser(updated: PublicUser) {
-    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)))
   }
 
   return (
@@ -188,16 +142,16 @@ export function UsersPanel() {
 
       <Card className="gap-0 p-0">
         <CardContent className="divide-y divide-border/60 px-6 py-2">
-          {loading ? (
+          {isPending ? (
             <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
               <LoaderCircle className="size-4 animate-spin" />
               {t("loading")}
             </p>
           ) : null}
-          {error && !loading ? (
+          {isError && !isPending ? (
             <p className="py-6 text-sm text-destructive">{t("users.loadError")}</p>
           ) : null}
-          {!loading && !error && users.length === 0 ? (
+          {!isPending && !isError && users.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">{t("users.empty")}</p>
           ) : null}
           {users.map((user) => (
@@ -206,17 +160,22 @@ export function UsersPanel() {
               user={user}
               viewerId={viewer?.id ?? null}
               canManageRoles={canManageRoles}
-              onUpdated={replaceUser}
               t={t}
             />
           ))}
         </CardContent>
       </Card>
 
-      {cursor ? (
+      {hasNextPage ? (
         <div className="flex justify-center">
-          <Button type="button" variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? <LoaderCircle className="size-4 animate-spin" /> : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {t("users.loadMore")}
           </Button>
         </div>
@@ -229,17 +188,17 @@ function UserRow({
   user,
   viewerId,
   canManageRoles,
-  onUpdated,
   t,
 }: {
   user: PublicUser
   viewerId: string | null
   canManageRoles: boolean
-  onUpdated: (user: PublicUser) => void
   t: PanelT
 }) {
   const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const statusMutation = useSetAdminUserStatus()
+  const roleMutation = useSetAdminUserRole()
+  const isPending = statusMutation.isPending || roleMutation.isPending
 
   const isSelf = user.id === viewerId
   const suspended = user.status === "suspended"
@@ -249,28 +208,26 @@ function UserRow({
 
   function toggleStatus() {
     setError(null)
-    startTransition(async () => {
-      try {
-        const updated = await setAdminUserStatus(user.id, {
-          status: suspended ? "active" : "suspended",
-        })
-        onUpdated(updated)
-      } catch (caught) {
-        setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
-      }
-    })
+    statusMutation.mutate(
+      { userId: user.id, input: { status: suspended ? "active" : "suspended" } },
+      {
+        onError: (caught) => {
+          setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
+        },
+      },
+    )
   }
 
   function applyRole(role: AssignableRole) {
     setError(null)
-    startTransition(async () => {
-      try {
-        const updated = await setAdminUserRole(user.id, { role })
-        onUpdated(updated)
-      } catch (caught) {
-        setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
-      }
-    })
+    roleMutation.mutate(
+      { userId: user.id, input: { role } },
+      {
+        onError: (caught) => {
+          setError(caught instanceof ApiError ? caught.message : t("users.actionError"))
+        },
+      },
+    )
   }
 
   return (
