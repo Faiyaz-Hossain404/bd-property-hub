@@ -19,6 +19,15 @@ const STATS = [
   { value: 8, suffix: '', labelKey: 'statDivisionsLabel', accent: 'text-ochre' },
 ] as const;
 
+// Hero heading blur-in. Opacity stays at 1 and only blur + a small rise animate,
+// so the LCP heading is painted (and legible without JS) from the first frame
+// rather than hidden at opacity:0 until hydration. Shared by both phrase spans.
+const HERO_BLUR_FROM = { filter: 'blur(12px)', opacity: 1, y: -12 };
+const HERO_BLUR_TO = [
+  { filter: 'blur(6px)', opacity: 1, y: 0 },
+  { filter: 'blur(0px)', opacity: 1, y: 0 },
+];
+
 export default async function HomePage({ params }: PageParams) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -59,6 +68,9 @@ export default async function HomePage({ params }: PageParams) {
                   text={t('headline')}
                   animateBy="words"
                   delay={90}
+                  immediate
+                  animationFrom={HERO_BLUR_FROM}
+                  animationTo={HERO_BLUR_TO}
                   aria-hidden
                 />{' '}
                 <BlurText
@@ -67,6 +79,10 @@ export default async function HomePage({ params }: PageParams) {
                   className="text-clay"
                   animateBy="words"
                   delay={90}
+                  immediate
+                  startIndex={t('headline').trim().split(/\s+/).length}
+                  animationFrom={HERO_BLUR_FROM}
+                  animationTo={HERO_BLUR_TO}
                   aria-hidden
                 />
               </h1>

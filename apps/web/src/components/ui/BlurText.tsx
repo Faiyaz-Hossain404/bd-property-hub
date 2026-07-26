@@ -6,16 +6,24 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ElementType,
   type HTMLAttributes,
 } from 'react';
 
 // Ported from React Bits' BlurText to TypeScript for this strict-TS codebase, with
-// two additions on top of the original reveal logic: an `as` prop (so it can render
-// as a <span> and nest inside an <h1> instead of emitting invalid <p>-in-heading
-// markup) and prefers-reduced-motion support (reduced-motion users get the final
-// text instantly, with no blur animation). The look and stagger are otherwise the
-// same as the source.
+// a few additions on top of the original reveal logic:
+//   - `as`         : root element (default 'p'); the hero passes 'span' so it nests
+//                    inside an <h1> instead of emitting invalid <p>-in-heading markup.
+//   - `immediate`  : reveal on mount and skip the IntersectionObserver. Above-the-fold
+//                    content (the hero) is already in view, so waiting on an
+//                    intersection callback is pure overhead and risks a blank frame.
+//   - `startIndex` : stagger offset so two side-by-side instances read as one
+//                    continuous cascade instead of two parallel ones.
+//   - reduced motion: reduced-motion users get the text instantly.
+// For above-the-fold use, pass animationFrom/To that keep opacity at 1 (animate only
+// blur + y): the primary heading is then painted from the first frame (LCP-friendly,
+// legible even before JS runs) instead of being gated at opacity:0 behind hydration.
 
 type Snapshot = Record<string, string | number>;
 
@@ -30,11 +38,15 @@ const buildKeyframes = (
 
   const keyframes: Record<string, Array<string | number>> = {};
   keys.forEach((key) => {
-    // A key present in one snapshot but not another yields `undefined`; drop those
-    // so each property animates only across the steps that actually define it.
-    keyframes[key] = [from[key], ...steps.map((step) => step[key])].filter(
-      (value): value is string | number => value !== undefined,
-    );
+    // Carry the last defined value forward for any step that omits this key, so
+    // every property's keyframe array stays exactly as long as the shared `times`
+    // array (motion requires equal lengths) even for partial custom snapshots.
+    const raw = [from[key], ...steps.map((step) => step[key])];
+    let last: string | number = raw.find((value) => value !== undefined) ?? 0;
+    keyframes[key] = raw.map((value) => {
+      if (value !== undefined) last = value;
+      return last;
+    });
   });
   return keyframes;
 };
@@ -48,6 +60,8 @@ type BlurTextProps = {
   direction?: 'top' | 'bottom';
   threshold?: number;
   rootMargin?: string;
+  immediate?: boolean;
+  startIndex?: number;
   animationFrom?: Snapshot;
   animationTo?: Snapshot[];
   easing?: (t: number) => number;
@@ -64,19 +78,24 @@ const BlurText = ({
   direction = 'top',
   threshold = 0.1,
   rootMargin = '0px',
+  immediate = false,
+  startIndex = 0,
   animationFrom,
   animationTo,
   easing = (t) => t,
   onAnimationComplete,
   stepDuration = 0.35,
+  style,
   ...rest
 }: BlurTextProps) => {
   const elements = animateBy === 'words' ? text.split(' ') : text.split('');
-  const [inView, setInView] = useState(false);
+  const [inView, setInView] = useState(immediate);
   const ref = useRef<HTMLElement>(null);
   const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
+    // `immediate` (above-the-fold) reveals on mount, so no observer is needed.
+    if (immediate) return;
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -90,7 +109,7 @@ const BlurText = ({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold, rootMargin]);
+  }, [immediate, threshold, rootMargin]);
 
   const defaultFrom = useMemo<Snapshot>(
     () =>
@@ -117,30 +136,28 @@ const BlurText = ({
     stepCount === 1 ? 0 : i / (stepCount - 1),
   );
 
-  return (
-    <Wrapper
-      ref={ref}
-      className={className}
-      style={{ display: 'inline-flex', flexWrap: 'wrap' }}
-      {...rest}
-    >
-      {elements.map((segment, index) => {
-        const animateKeyframes = buildKeyframes(fromSnapshot, toSnapshots);
+  // Identical for every word this render, so build it once, not per word.
+  const animateKeyframes = buildKeyframes(fromSnapshot, toSnapshots);
+  // Merge the required inline-flex layout with any caller-supplied style, so a
+  // passed `style` can't silently drop the word-wrap layout.
+  const wrapperStyle: CSSProperties = { display: 'inline-flex', flexWrap: 'wrap', ...style };
 
-        // Reduced-motion users still get the text — just instantly, with no blur
-        // reveal. Keeping `initial` at fromSnapshot (rather than the final state)
-        // makes the server and client render the same HTML, so there is no
-        // hydration mismatch; only the transition duration/stagger differ.
+  return (
+    <Wrapper ref={ref} className={className} style={wrapperStyle} {...rest}>
+      {elements.map((segment, index) => {
+        // Reduced-motion users still get the text — just instantly. Keeping
+        // `initial` at fromSnapshot makes server and client render the same HTML
+        // (no hydration mismatch); only the transition duration/stagger differ.
         const spanTransition: Transition = {
           duration: shouldReduceMotion ? 0 : totalDuration,
           times,
-          delay: shouldReduceMotion ? 0 : (index * delay) / 1000,
+          delay: shouldReduceMotion ? 0 : ((startIndex + index) * delay) / 1000,
           ease: easing,
         };
 
         return (
           <motion.span
-            className="inline-block will-change-[transform,filter,opacity]"
+            className="inline-block"
             key={index}
             initial={fromSnapshot}
             animate={inView ? animateKeyframes : fromSnapshot}
