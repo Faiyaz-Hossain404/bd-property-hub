@@ -20,6 +20,9 @@ import {
 //                    intersection callback is pure overhead and risks a blank frame.
 //   - `startIndex` : stagger offset so two side-by-side instances read as one
 //                    continuous cascade instead of two parallel ones.
+//   - `startDelay` : flat delay (ms) added before this instance's own word
+//                    stagger begins, so separate blocks (e.g. a badge, a
+//                    heading, a paragraph) can cascade in sequence.
 //   - reduced motion: reduced-motion users get the text instantly.
 // For above-the-fold use, pass animationFrom/To that keep opacity at 1 (animate only
 // blur + y): the primary heading is then painted from the first frame (LCP-friendly,
@@ -62,6 +65,7 @@ type BlurTextProps = {
   rootMargin?: string;
   immediate?: boolean;
   startIndex?: number;
+  startDelay?: number;
   animationFrom?: Snapshot;
   animationTo?: Snapshot[];
   easing?: (t: number) => number;
@@ -80,6 +84,7 @@ const BlurText = ({
   rootMargin = '0px',
   immediate = false,
   startIndex = 0,
+  startDelay = 0,
   animationFrom,
   animationTo,
   easing = (t) => t,
@@ -151,7 +156,9 @@ const BlurText = ({
         const spanTransition: Transition = {
           duration: shouldReduceMotion ? 0 : totalDuration,
           times,
-          delay: shouldReduceMotion ? 0 : ((startIndex + index) * delay) / 1000,
+          delay: shouldReduceMotion
+            ? 0
+            : startDelay / 1000 + ((startIndex + index) * delay) / 1000,
           ease: easing,
         };
 
@@ -167,7 +174,12 @@ const BlurText = ({
             }
           >
             {segment === ' ' ? '\u00A0' : segment}
-            {animateBy === 'words' && index < elements.length - 1 && '\u00A0'}
+            {/* A real space, not nbsp: for words-mode instances this is real,
+                selectable/copyable text (the badge and subhead aren't
+                aria-hidden), and a copied U+00A0 silently fails exact-match
+                comparisons (search boxes, form fields) where a normal space
+                would match. */}
+            {animateBy === 'words' && index < elements.length - 1 && ' '}
           </motion.span>
         );
       })}
