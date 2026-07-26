@@ -9,7 +9,7 @@
     "listings": "Listings",
     "dashboard": "Dashboard",
     "admin": "Admin",
-    "superAdmin": "Super Admin",
+    "superAdmin": "Admin (prime)",
     "browse": "Browse",
     "signIn": "Sign in",
     "signOut": "Sign out",
@@ -92,15 +92,14 @@
     "emailLabel": "Email",
     "emailVerified": "Verified",
     "emailUnverified": "Unverified",
-    "rolesLabel": "Roles",
+    "roleLabel": "Role",
     "statusLabel": "Status",
     "memberSince": "Member since",
     "logout": "Sign out",
     "loggingOut": "Signing out…",
     "roles": {
-      "super_admin": "Super admin",
+      "admin_prime": "Admin (prime)",
       "admin": "Admin",
-      "customer_support": "Support",
       "seller": "Seller",
       "buyer": "Buyer"
     },
@@ -440,10 +439,18 @@
     "statVerifiedLabel": "Documents verified",
     "statDivisionsLabel": "Divisions served"
   },
+  "footer": {
+    "tagline": "Verified property across Bangladesh — every listing checked and every deal brokered by our team, in English and Bangla.",
+    "exploreHeading": "Explore",
+    "getStartedHeading": "Get started",
+    "getStartedBlurb": "Browse verified listings and save the ones you love.",
+    "browseCta": "Browse listings",
+    "rights": "All rights reserved."
+  },
   "admin": {
     "brand": "BD Property Hub",
     "roleAdmin": "Admin",
-    "roleSuperAdmin": "Super admin",
+    "roleSuperAdmin": "Admin (prime)",
     "backToDashboard": "Back to dashboard",
     "navLabel": "Admin sections",
     "nav": {
@@ -480,9 +487,8 @@
     },
     "breakdown": {
       "role": {
-        "super_admin": "Super admin",
+        "admin_prime": "Admin (prime)",
         "admin": "Admin",
-        "customer_support": "Support",
         "seller": "Seller",
         "buyer": "Buyer"
       },
@@ -527,11 +533,8 @@
       "loadMore": "Load more",
       "suspend": "Suspend",
       "reactivate": "Reactivate",
-      "editRoles": "Edit roles",
-      "editRolesTitle": "Assign roles",
-      "saveRoles": "Save roles",
+      "changeRole": "Change role",
       "cancel": "Cancel",
-      "rolesRequired": "Select at least one role.",
       "actionError": "That action didn't go through. Please try again.",
       "notSelf": "You can't change your own account here.",
       "youBadge": "This is you"

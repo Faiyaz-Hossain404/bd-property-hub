@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:clean": "pnpm run clean && next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"const fs=require('fs');for (const d of ['.next','.next-dev']) fs.rmSync(d,{recursive:true,force:true});console.log('cleaned .next and .next-dev')\""
   },
   "dependencies": {
     "@bdph/types": "workspace:*",

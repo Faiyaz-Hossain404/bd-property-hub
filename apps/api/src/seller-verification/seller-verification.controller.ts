@@ -14,10 +14,10 @@ import { SellerVerificationService } from './seller-verification.service';
 
 // Admin surface for reviewing seller verification (FR-S8). Class-level @Roles is
 // enforced by RolesGuard (reads class + method metadata), so every route here is
-// admin/super_admin only.
+// admin/admin_prime only.
 @Controller('admin/seller-verification')
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@Roles('admin', 'admin_prime')
 export class SellerVerificationController {
   constructor(
     private readonly verification: SellerVerificationService,

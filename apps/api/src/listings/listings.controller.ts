@@ -15,7 +15,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ListingsService } from './listings.service';
 
-const STAFF_ROLES = ['admin', 'super_admin'];
+const STAFF_ROLES = ['admin', 'admin_prime'];
 
 @Controller()
 export class ListingsController {
@@ -24,7 +24,7 @@ export class ListingsController {
   @Post('listings')
   @HttpCode(201)
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async createDraft(
     @Body(new ZodValidationPipe(createListingInputSchema)) body: CreateListingInput,
     @CurrentUser() user: PublicUser,
@@ -42,7 +42,7 @@ export class ListingsController {
 
   @Patch('listings/:id')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateListingInputSchema)) body: UpdateListingInput,
@@ -54,18 +54,18 @@ export class ListingsController {
 
   @Post('listings/:id/submit')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async submit(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<PublicListing> {
     const listing = await this.listings.submitForReview(user.id, id);
     return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
-  // Owner self-service only — not '@Roles(..., admin, super_admin)' like the
-  // sibling routes above. withdraw() always checks ownership against the
-  // caller's own id, so staff would just get a 403 here, not a real grant.
-  // A staff-initiated takedown of someone else's listing is a separate,
-  // not-yet-designed capability (would need its own audit/role checks) —
-  // do not "fix" the 403 by swapping in a non-ownership-checked lookup.
+  // Owner self-service. withdraw() ALWAYS checks ownership against the caller's
+  // own id, so ownership — not the role gate — is the real protection here: staff
+  // (admin/admin_prime, who inherit seller capability) can withdraw their OWN
+  // listing but get a 403 on anyone else's. A staff-initiated takedown of someone
+  // else's listing is the separate moderation capability, not this route — do not
+  // "fix" a 403 by swapping in a non-ownership-checked lookup.
   @Post('listings/:id/withdraw')
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles('seller')
@@ -74,10 +74,10 @@ export class ListingsController {
     return this.listings.toPublic(listing, { forOwnerOrStaff: true });
   }
 
-  // Owner self-service only, same as withdraw above — restore() checks ownership
-  // against the caller's id, so staff get a 403 rather than a cross-owner grant.
-  // Keep it '@Roles('seller')'; don't broaden it or swap in a lookup that skips
-  // the ownership check.
+  // Owner self-service, same as withdraw above — restore() checks ownership
+  // against the caller's id, so ownership (not the role) scopes it: staff get a
+  // 403 on a cross-owner listing. Keep '@Roles('seller')'; don't swap in a lookup
+  // that skips the ownership check.
   @Post('listings/:id/restore')
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles('seller')

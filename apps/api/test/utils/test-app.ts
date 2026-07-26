@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import request from 'supertest';
 import type { Connection } from 'mongoose';
+import { collapseLegacyRoles } from '@bdph/types';
 import type { ListingLocationInput, PublicListing, PublicUser, Role } from '@bdph/types';
 
 import { ResponseEnvelopeInterceptor } from '../../src/common/interceptors/response-envelope.interceptor';
@@ -144,11 +145,14 @@ export async function registerUser(ctx: TestContext, roles: Role[] = []): Promis
   return { agent, user };
 }
 
+// Single-role model: the highest-privilege role in `roles` becomes the user's one
+// assigned role (callers still pass an array for backwards-compatible test setup,
+// e.g. ['seller'] or ['admin']). Implied capabilities are derived on read, so an
+// 'admin' actor transparently satisfies seller/buyer-gated routes.
 export async function grantRoles(ctx: TestContext, userId: string, roles: Role[]): Promise<void> {
+  if (roles.length === 0) return;
   const users = ctx.app.get(UsersService);
-  for (const role of roles) {
-    await users.addRole(userId, role);
-  }
+  await users.setRole(userId, collapseLegacyRoles(roles));
 }
 
 export async function getMe(agent: Agent): Promise<PublicUser> {

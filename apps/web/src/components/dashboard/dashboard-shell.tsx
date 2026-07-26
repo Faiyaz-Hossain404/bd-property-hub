@@ -21,7 +21,7 @@ import { ListingsSection } from "@/components/dashboard/listings-section"
 import { SavedSection } from "@/components/dashboard/saved-section"
 import { SellerVerificationSection } from "@/components/dashboard/seller-verification-section"
 
-const MODERATOR_ROLES = ["admin", "super_admin"] as const
+const MODERATOR_ROLES = ["admin", "admin_prime"] as const
 const SELLER_ROLE = "seller"
 
 type Props = { user: PublicUser; onUserRefresh: () => void }
@@ -62,7 +62,7 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           )}
         />
 
-        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
+        <div className="relative mx-auto max-w-2xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
             {t("welcome", { name: user.name })}
           </h1>
@@ -81,14 +81,8 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
                 </Badge>
               </Row>
 
-              <Row label={t("rolesLabel")}>
-                <div className="flex flex-wrap justify-end gap-1.5">
-                  {user.roles.map((role) => (
-                    <Badge key={role} variant="secondary">
-                      {t(`roles.${role}`)}
-                    </Badge>
-                  ))}
-                </div>
+              <Row label={t("roleLabel")}>
+                <Badge variant="secondary">{t(`roles.${user.role}`)}</Badge>
               </Row>
 
               <Row label={t("statusLabel")}>

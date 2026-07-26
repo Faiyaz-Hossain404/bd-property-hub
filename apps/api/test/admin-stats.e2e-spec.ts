@@ -12,7 +12,7 @@ import {
 } from './utils/test-app';
 
 // GET /admin/stats — the analytics dashboard feed (FR-A3). Two things matter:
-// it is role-gated (admin/super_admin only), and the aggregate counts reflect
+// it is role-gated (admin/admin_prime only), and the aggregate counts reflect
 // real data.
 describe('Admin stats (e2e)', () => {
   let ctx: TestContext;

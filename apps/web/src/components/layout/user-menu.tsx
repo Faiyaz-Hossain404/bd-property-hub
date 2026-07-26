@@ -6,7 +6,7 @@ import type { PublicUser } from "@bdph/types"
 
 import { Link } from "@/i18n/navigation"
 import { useLogout } from "@/hooks/use-logout"
-import { isStaff, isSuperAdmin } from "@/lib/roles"
+import { isStaff, isAdminPrime } from "@/lib/roles"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
   const t = useTranslations("nav")
   const { logout } = useLogout()
   const staff = isStaff(user)
-  const superAdmin = isSuperAdmin(user)
+  const adminPrime = isAdminPrime(user)
 
   return (
     <DropdownMenu>
@@ -66,8 +66,8 @@ export function UserMenu({ user }: { user: PublicUser }) {
         {staff ? (
           <DropdownMenuItem asChild>
             <Link href="/admin">
-              {superAdmin ? <ShieldCheck /> : <Gauge />}
-              {superAdmin ? t("superAdmin") : t("admin")}
+              {adminPrime ? <ShieldCheck /> : <Gauge />}
+              {adminPrime ? t("superAdmin") : t("admin")}
             </Link>
           </DropdownMenuItem>
         ) : null}

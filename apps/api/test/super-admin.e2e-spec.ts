@@ -11,9 +11,9 @@ const SUPER_ADMIN_EMAIL = 'owner-e2e@example.com';
 // End-to-end proof of SUPER_ADMIN_EMAIL auto-elevation against the real app + an
 // in-memory Mongo. Elevation is deliberately gated on a VERIFIED account, so the
 // suite proves both halves: an unverified registration is NOT elevated (the fix for
-// the register-front-running takeover), and once the email is verified the owner is
-// granted super_admin (via email verification AND via a later sign-in), with the
-// default buyer role preserved. No other email is ever elevated.
+// the register-front-running takeover), and once the email is verified the owner's
+// single role becomes admin_prime (via email verification AND via a later sign-in).
+// No other email is ever elevated.
 describe('Super admin auto-elevation (e2e)', () => {
   let ctx: TestContext;
   const priorEnv = process.env.SUPER_ADMIN_EMAIL;
@@ -49,13 +49,13 @@ describe('Super admin auto-elevation (e2e)', () => {
 
   it('does NOT elevate the configured email at registration (email not yet verified)', async () => {
     // The security-critical case: an unverified account — even the configured
-    // owner's — must never receive super_admin, or anyone who knows the email could
+    // owner's — must never receive admin_prime, or anyone who knows the email could
     // self-register into it before the real owner.
     const { user } = await register(SUPER_ADMIN_EMAIL);
     expect(user.roles).toEqual(['buyer']);
   });
 
-  it('grants super_admin when the owner verifies their email — no re-login needed', async () => {
+  it('grants admin_prime when the owner verifies their email — no re-login needed', async () => {
     const { agent, user } = await register(SUPER_ADMIN_EMAIL);
 
     // Mint a real email-verify token and confirm it through the public endpoint,
@@ -66,10 +66,10 @@ describe('Super admin auto-elevation (e2e)', () => {
     // The original session re-resolves from the DB, so the freshly granted role is
     // visible immediately without signing in again.
     const me = await agent.get(`${API}/auth/me`).expect(200);
-    expect((me.body.data as PublicUser).roles).toEqual(expect.arrayContaining(['buyer', 'super_admin']));
+    expect((me.body.data as PublicUser).roles).toEqual(expect.arrayContaining(['buyer', 'admin_prime']));
   });
 
-  it('grants super_admin when a verified owner signs in on a new device', async () => {
+  it('grants admin_prime when a verified owner signs in on a new device', async () => {
     const { user } = await register(SUPER_ADMIN_EMAIL);
     // Simulate an already-verified account (as if the link was clicked earlier).
     await ctx.app.get(UsersService).markEmailVerified(user.id);
@@ -79,10 +79,10 @@ describe('Super admin auto-elevation (e2e)', () => {
       .post(`${API}/auth/login`)
       .send({ email: SUPER_ADMIN_EMAIL, password: 'password123' })
       .expect(200);
-    expect((login.body.data as PublicUser).roles).toContain('super_admin');
+    expect((login.body.data as PublicUser).roles).toContain('admin_prime');
 
     const me = await fresh.get(`${API}/auth/me`).expect(200);
-    expect((me.body.data as PublicUser).roles).toContain('super_admin');
+    expect((me.body.data as PublicUser).roles).toContain('admin_prime');
   });
 
   it('matches the configured email case-insensitively', async () => {
@@ -94,7 +94,7 @@ describe('Super admin auto-elevation (e2e)', () => {
       .post(`${API}/auth/login`)
       .send({ email: 'owner-e2e@example.com', password: 'password123' })
       .expect(200);
-    expect((login.body.data as PublicUser).roles).toContain('super_admin');
+    expect((login.body.data as PublicUser).roles).toContain('admin_prime');
   });
 
   it('does NOT elevate any other email, even once verified (stays a plain buyer)', async () => {

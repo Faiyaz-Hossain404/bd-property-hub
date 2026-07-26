@@ -42,8 +42,21 @@ export class User {
   @Prop({ type: String, default: null })
   clerkUserId!: string | null;
 
-  @Prop({ type: [String], enum: ROLES, default: ['buyer'] })
-  roles!: Role[];
+  // The single assigned role — source of truth for the account's identity and
+  // permissions (implied capabilities are derived from it on read). No schema
+  // default on purpose: leaving it unset lets a pre-migration document fall back
+  // to the legacy `roles` array via effectiveRole(). A default would be applied to
+  // those documents on load and silently demote every legacy account to 'buyer'.
+  // New accounts set this explicitly (createLocal / upsertClerkUser).
+  @Prop({ type: String, enum: ROLES, index: true })
+  role?: Role;
+
+  // DEPRECATED legacy multi-role array. Retained ONLY so pre-migration documents
+  // remain readable for the collapse-to-single-role fallback; new code never
+  // writes it and the one-off backfill unsets it. No enum constraint here so the
+  // retired 'super_admin' / 'customer_support' values still load without error.
+  @Prop({ type: [String], default: undefined })
+  roles?: string[];
 
   @Prop({ type: String, enum: USER_STATUSES, default: 'pending_verification' })
   status!: UserStatus;

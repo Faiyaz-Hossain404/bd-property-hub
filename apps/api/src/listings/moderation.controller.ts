@@ -18,7 +18,7 @@ import { ListingsService } from './listings.service';
 // there is no separate moderation_case collection for this slice.
 @Controller('admin/moderation')
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@Roles('admin', 'admin_prime')
 export class ModerationController {
   constructor(private readonly listings: ListingsService) {}
 

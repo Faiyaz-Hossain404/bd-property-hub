@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { CatalogView } from '@/components/catalog/catalog-view';
 import { SiteHeaderAuto } from '@/components/layout/site-header';
+import { SiteFooter } from '@/components/layout/site-footer';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -25,6 +26,8 @@ export default async function CatalogPage({ params }: PageParams) {
           <CatalogView />
         </Suspense>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

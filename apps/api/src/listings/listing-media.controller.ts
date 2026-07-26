@@ -29,7 +29,7 @@ export class ListingMediaController {
 
   @Post('listings/:id/media/presign')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async presign(
     @Param('id') id: string,
     @CurrentUser() user: PublicUser,
@@ -39,7 +39,7 @@ export class ListingMediaController {
 
   @Post('listings/:id/media/commit')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async commit(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(commitListingMediaInputSchema)) body: CommitListingMediaInput,
@@ -56,7 +56,7 @@ export class ListingMediaController {
   // (it wouldn't be anyway — different HTTP verb — but the ordering is clearer).
   @Patch('listings/:id/media/order')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async reorder(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(reorderListingMediaInputSchema)) body: ReorderListingMediaInput,
@@ -70,7 +70,7 @@ export class ListingMediaController {
   // editable-status enforced in the service; returns the refreshed listing.
   @Delete('listings/:id/media/:mediaId')
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles('seller', 'admin', 'super_admin')
+  @Roles('seller', 'admin', 'admin_prime')
   async remove(
     @Param('id') id: string,
     @Param('mediaId') mediaId: string,

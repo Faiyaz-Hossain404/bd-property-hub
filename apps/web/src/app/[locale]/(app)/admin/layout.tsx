@@ -9,7 +9,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Button } from "@/components/ui/button"
 import { AdminShell } from "@/components/admin/admin-shell"
 
-const ADMIN_ROLES = ["admin", "super_admin"] as const
+const ADMIN_ROLES = ["admin", "admin_prime"] as const
 
 function Centered({ children }: { children: ReactNode }) {
   return (

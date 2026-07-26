@@ -9,7 +9,7 @@
     "listings": "লিস্টিং",
     "dashboard": "ড্যাশবোর্ড",
     "admin": "অ্যাডমিন",
-    "superAdmin": "সুপার অ্যাডমিন",
+    "superAdmin": "অ্যাডমিন (প্রাইম)",
     "browse": "ব্রাউজ",
     "signIn": "সাইন ইন",
     "signOut": "সাইন আউট",
@@ -92,15 +92,14 @@
     "emailLabel": "ইমেইল",
     "emailVerified": "যাচাইকৃত",
     "emailUnverified": "অযাচাইকৃত",
-    "rolesLabel": "ভূমিকা",
+    "roleLabel": "ভূমিকা",
     "statusLabel": "অবস্থা",
     "memberSince": "সদস্য হয়েছেন",
     "logout": "সাইন আউট",
     "loggingOut": "সাইন আউট হচ্ছে…",
     "roles": {
-      "super_admin": "সুপার অ্যাডমিন",
+      "admin_prime": "অ্যাডমিন (প্রাইম)",
       "admin": "অ্যাডমিন",
-      "customer_support": "সাপোর্ট",
       "seller": "বিক্রেতা",
       "buyer": "ক্রেতা"
     },
@@ -440,10 +439,18 @@
     "statVerifiedLabel": "কাগজপত্র যাচাইকৃত",
     "statDivisionsLabel": "বিভাগ অন্তর্ভুক্ত"
   },
+  "footer": {
+    "tagline": "বাংলাদেশজুড়ে যাচাইকৃত সম্পত্তি — প্রতিটি তালিকা যাচাইকৃত ও প্রতিটি লেনদেন আমাদের টিম পরিচালিত, ইংরেজি ও বাংলায়।",
+    "exploreHeading": "এক্সপ্লোর",
+    "getStartedHeading": "শুরু করুন",
+    "getStartedBlurb": "যাচাইকৃত তালিকা ব্রাউজ করুন এবং পছন্দেরগুলো সংরক্ষণ করুন।",
+    "browseCta": "লিস্টিং দেখুন",
+    "rights": "সর্বস্বত্ব সংরক্ষিত।"
+  },
   "admin": {
     "brand": "বিডি প্রপার্টি হাব",
     "roleAdmin": "অ্যাডমিন",
-    "roleSuperAdmin": "সুপার অ্যাডমিন",
+    "roleSuperAdmin": "অ্যাডমিন (প্রাইম)",
     "backToDashboard": "ড্যাশবোর্ডে ফিরুন",
     "navLabel": "অ্যাডমিন বিভাগ",
     "nav": {
@@ -480,9 +487,8 @@
     },
     "breakdown": {
       "role": {
-        "super_admin": "সুপার অ্যাডমিন",
+        "admin_prime": "অ্যাডমিন (প্রাইম)",
         "admin": "অ্যাডমিন",
-        "customer_support": "সাপোর্ট",
         "seller": "বিক্রেতা",
         "buyer": "ক্রেতা"
       },
@@ -527,11 +533,8 @@
       "loadMore": "আরও দেখুন",
       "suspend": "স্থগিত করুন",
       "reactivate": "পুনরায় সক্রিয় করুন",
-      "editRoles": "ভূমিকা সম্পাদনা",
-      "editRolesTitle": "ভূমিকা নির্ধারণ",
-      "saveRoles": "ভূমিকা সংরক্ষণ",
+      "changeRole": "ভূমিকা পরিবর্তন",
       "cancel": "বাতিল",
-      "rolesRequired": "অন্তত একটি ভূমিকা নির্বাচন করুন।",
       "actionError": "কাজটি সম্পন্ন হয়নি। আবার চেষ্টা করুন।",
       "notSelf": "আপনি এখানে নিজের অ্যাকাউন্ট পরিবর্তন করতে পারবেন না।",
       "youBadge": "এটি আপনি"

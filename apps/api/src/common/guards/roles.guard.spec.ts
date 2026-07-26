@@ -8,7 +8,7 @@ import { RolesGuard } from './roles.guard';
 // at the class level (ModerationController) and at the method level (listings,
 // media). The guard must enforce BOTH — a regression here silently opened the
 // class-level admin routes to any authenticated user.
-@Roles('admin', 'super_admin')
+@Roles('admin', 'admin_prime')
 class ClassLevelController {
   handler(): void {}
 }

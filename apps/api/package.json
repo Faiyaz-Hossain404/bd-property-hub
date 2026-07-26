@@ -11,7 +11,8 @@
     "test": "jest && jest --config ./test/jest-e2e.json",
     "test:unit": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed:geo": "ts-node src/geo/geo.seed.ts"
+    "seed:geo": "ts-node src/geo/geo.seed.ts",
+    "backfill:roles": "ts-node scripts/backfill-single-role.ts"
   },
   "dependencies": {
     "@bdph/types": "workspace:*",

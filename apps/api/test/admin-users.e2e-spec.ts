@@ -107,17 +107,17 @@ describe('Admin user management (e2e)', () => {
         .expect(403);
     });
 
-    it('stops an admin from suspending a staff account, but lets a super admin', async () => {
+    it('stops a standard admin from suspending a staff account, but lets the prime admin', async () => {
       const admin = await registerUser(ctx, ['admin']);
       const otherAdmin = await registerUser(ctx, ['admin']);
-      const superAdmin = await registerUser(ctx, ['super_admin']);
+      const prime = await registerUser(ctx, ['admin_prime']);
 
       await admin.agent
         .patch(`${API}/admin/users/${otherAdmin.user.id}/status`)
         .send({ status: 'suspended' })
         .expect(403);
 
-      await superAdmin.agent
+      await prime.agent
         .patch(`${API}/admin/users/${otherAdmin.user.id}/status`)
         .send({ status: 'suspended' })
         .expect(200);
@@ -134,42 +134,70 @@ describe('Admin user management (e2e)', () => {
   });
 
   describe('role assignment', () => {
-    it('is super-admin only', async () => {
+    it('is blocked for a standard admin (prime only)', async () => {
       const admin = await registerUser(ctx, ['admin']);
       const buyer = await registerUser(ctx);
       await admin.agent
-        .patch(`${API}/admin/users/${buyer.user.id}/roles`)
-        .send({ roles: ['seller'] })
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({ role: 'seller' })
         .expect(403);
     });
 
-    it('lets a super admin replace an account’s roles', async () => {
-      const superAdmin = await registerUser(ctx, ['super_admin']);
+    it('lets the prime admin set an account’s single role', async () => {
+      const prime = await registerUser(ctx, ['admin_prime']);
       const buyer = await registerUser(ctx);
 
-      const res = await superAdmin.agent
-        .patch(`${API}/admin/users/${buyer.user.id}/roles`)
-        .send({ roles: ['buyer', 'seller'] })
+      const res = await prime.agent
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({ role: 'seller' })
         .expect(200);
-      const roles = (res.body.data as PublicUser).roles;
-      expect(roles).toEqual(expect.arrayContaining(['buyer', 'seller']));
-      expect(roles).toHaveLength(2);
+      const updated = res.body.data as PublicUser;
+      // The one assigned role is 'seller'; capabilities imply only itself.
+      expect(updated.role).toBe('seller');
+      expect(updated.roles).toEqual(['seller']);
     });
 
-    it('blocks a super admin from changing their own roles', async () => {
-      const superAdmin = await registerUser(ctx, ['super_admin']);
-      await superAdmin.agent
-        .patch(`${API}/admin/users/${superAdmin.user.id}/roles`)
-        .send({ roles: ['admin'] })
+    it('gives an assigned admin implied seller + buyer capability', async () => {
+      const prime = await registerUser(ctx, ['admin_prime']);
+      const buyer = await registerUser(ctx);
+
+      const res = await prime.agent
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({ role: 'admin' })
+        .expect(200);
+      const updated = res.body.data as PublicUser;
+      expect(updated.role).toBe('admin');
+      // Implied capabilities: admin inherits seller + buyer.
+      expect(updated.roles).toEqual(expect.arrayContaining(['admin', 'seller', 'buyer']));
+    });
+
+    it('blocks the prime from changing their own role (self-lockout guard)', async () => {
+      const prime = await registerUser(ctx, ['admin_prime']);
+      await prime.agent
+        .patch(`${API}/admin/users/${prime.user.id}/role`)
+        .send({ role: 'admin' })
         .expect(403);
     });
 
-    it('rejects an empty roles list', async () => {
-      const superAdmin = await registerUser(ctx, ['super_admin']);
+    it('refuses to assign admin_prime (reserved to the owner email)', async () => {
+      const prime = await registerUser(ctx, ['admin_prime']);
       const buyer = await registerUser(ctx);
-      await superAdmin.agent
-        .patch(`${API}/admin/users/${buyer.user.id}/roles`)
-        .send({ roles: [] })
+      await prime.agent
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({ role: 'admin_prime' })
+        .expect(400);
+    });
+
+    it('rejects a missing or unknown role', async () => {
+      const prime = await registerUser(ctx, ['admin_prime']);
+      const buyer = await registerUser(ctx);
+      await prime.agent
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({})
+        .expect(400);
+      await prime.agent
+        .patch(`${API}/admin/users/${buyer.user.id}/role`)
+        .send({ role: 'wizard' })
         .expect(400);
     });
   });

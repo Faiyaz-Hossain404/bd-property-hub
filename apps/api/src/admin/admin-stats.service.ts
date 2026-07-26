@@ -67,11 +67,41 @@ export class AdminStatsService {
       this.listingModel.countDocuments({ publicationStatus: 'pending_review' }).exec(),
       this.userModel.countDocuments({ kycStatus: 'pending' }).exec(),
       this.listingModel.countDocuments({ publicationStatus: 'removed' }).exec(),
-      // Users can hold multiple roles, so unwind the array before grouping.
+      // Each account has one assigned `role`; group by it, falling back to
+      // collapsing a legacy `roles` array for pre-migration documents
+      // (super_admin -> admin_prime, customer_support -> admin, highest privilege
+      // wins, else buyer) so counts stay correct across the transition.
       this.userModel
         .aggregate<GroupCount>([
-          { $unwind: '$roles' },
-          { $group: { _id: '$roles', count: { $sum: 1 } } },
+          {
+            $group: {
+              _id: {
+                $ifNull: [
+                  '$role',
+                  {
+                    $switch: {
+                      branches: [
+                        { case: { $in: ['super_admin', { $ifNull: ['$roles', []] }] }, then: 'admin_prime' },
+                        { case: { $in: ['admin_prime', { $ifNull: ['$roles', []] }] }, then: 'admin_prime' },
+                        {
+                          case: {
+                            $or: [
+                              { $in: ['admin', { $ifNull: ['$roles', []] }] },
+                              { $in: ['customer_support', { $ifNull: ['$roles', []] }] },
+                            ],
+                          },
+                          then: 'admin',
+                        },
+                        { case: { $in: ['seller', { $ifNull: ['$roles', []] }] }, then: 'seller' },
+                      ],
+                      default: 'buyer',
+                    },
+                  },
+                ],
+              },
+              count: { $sum: 1 },
+            },
+          },
         ])
         .exec(),
       this.groupBy(this.userModel, '$status'),

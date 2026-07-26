@@ -10,7 +10,7 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-const STAFF_ROLES = ["admin", "super_admin"] as const
+const STAFF_ROLES = ["admin", "admin_prime"] as const
 
 // Staff-only takedown panel on the public listing detail page (MOD-3). This is
 // where staff encounter a live listing to pull down — e.g. after a report. It

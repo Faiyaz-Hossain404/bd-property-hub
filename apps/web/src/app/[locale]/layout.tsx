@@ -44,13 +44,13 @@ export default async function LocaleLayout({
     // widgets. It reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY from the env (loaded from the
     // root .env in next.config). URLs are locale-aware, and every successful sign-in/up
     // is forced to /complete, where we exchange the Clerk session for our own
-    // bdph_session cookie. Colours match the app's terracotta primary + radius.
+    // bdph_session cookie. Colours match the app's honey-gold primary + radius.
     <ClerkProvider
       signInUrl={`/${locale}/login`}
       signUpUrl={`/${locale}/register`}
       signInForceRedirectUrl={`/${locale}/complete`}
       signUpForceRedirectUrl={`/${locale}/complete`}
-      appearance={{ variables: { colorPrimary: '#059669', borderRadius: '0.625rem' } }}
+      appearance={{ variables: { colorPrimary: '#a16207', borderRadius: '0.625rem' } }}
     >
       <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
         <body>
