@@ -439,6 +439,14 @@
     "statVerifiedLabel": "Documents verified",
     "statDivisionsLabel": "Divisions served"
   },
+  "footer": {
+    "tagline": "Verified property across Bangladesh — every listing checked and every deal brokered by our team, in English and Bangla.",
+    "exploreHeading": "Explore",
+    "getStartedHeading": "Get started",
+    "getStartedBlurb": "Browse verified listings and save the ones you love.",
+    "browseCta": "Browse listings",
+    "rights": "All rights reserved."
+  },
   "admin": {
     "brand": "BD Property Hub",
     "roleAdmin": "Admin",

@@ -1,0 +1,71 @@
+"use client"
+
+import { Building2 } from "lucide-react"
+import { useTranslations } from "next-intl"
+
+import { Link } from "@/i18n/navigation"
+import { Button } from "@/components/ui/button"
+
+// Site-wide marketing footer for the public surfaces (home, catalog, listing
+// detail). Deep-charcoal ground, white headings, muted-gray links, and a
+// honey-gold call-to-action. Only links to routes that actually exist (Home,
+// Listings) — no placeholder legal pages and no fabricated content.
+export function SiteFooter() {
+  const t = useTranslations("footer")
+  const tNav = useTranslations("nav")
+  const year = new Date().getFullYear()
+
+  return (
+    <footer className="border-t border-white/10 bg-stone-950 text-stone-400">
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1.2fr]">
+          {/* Brand + tagline */}
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                <Building2 className="size-4.5" />
+              </span>
+              <span className="font-heading text-base font-bold tracking-tight text-white">
+                {tNav("brand")}
+              </span>
+            </div>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-stone-400">{t("tagline")}</p>
+          </div>
+
+          {/* Explore column — real routes only */}
+          <nav aria-label={t("exploreHeading")} className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
+              {t("exploreHeading")}
+            </h2>
+            <Link href="/" className="text-sm text-stone-400 transition-colors hover:text-white">
+              {tNav("home")}
+            </Link>
+            <Link
+              href="/catalog"
+              className="text-sm text-stone-400 transition-colors hover:text-white"
+            >
+              {tNav("listings")}
+            </Link>
+          </nav>
+
+          {/* Get started column + honey-gold CTA */}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
+              {t("getStartedHeading")}
+            </h2>
+            <p className="max-w-xs text-sm leading-relaxed text-stone-400">{t("getStartedBlurb")}</p>
+            <Button asChild size="sm" className="mt-1 w-fit rounded-full">
+              <Link href="/catalog">{t("browseCta")}</Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-12 border-t border-white/10 pt-6">
+          <p className="text-xs text-stone-400">
+            © <span suppressHydrationWarning>{year}</span> {tNav("brand")}. {t("rights")}
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}

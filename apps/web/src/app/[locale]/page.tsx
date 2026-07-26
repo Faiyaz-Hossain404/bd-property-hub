@@ -6,6 +6,7 @@ import { NumberTicker } from '@/components/ui/number-ticker';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 import { HeroSearch } from '@/components/home/hero-search';
 import { SiteHeaderAuto } from '@/components/layout/site-header';
+import { SiteFooter } from '@/components/layout/site-footer';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -69,6 +70,8 @@ export default async function HomePage({ params }: PageParams) {
           </div>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

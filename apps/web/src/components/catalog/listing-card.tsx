@@ -128,19 +128,29 @@ export function ListingCard({ listing, saved, active, selectable, onSelect }: Pr
           className="absolute inset-0 z-10 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
         />
 
-        {/* Frosted info panel (bottom). pointer-events-none so clicks fall through
-            to the stretched link beneath it; aria-hidden as the link already
-            conveys this text. */}
+        {/* Dark gradient info panel (bottom). Title/location/price sit on a scrim
+            rising from the image so they stay legible over any photo. The scrim
+            keeps an opaque floor (no full transparency at the top) and the text
+            carries a shadow so the title survives even a bright/washed-out photo.
+            Colours here are intentionally fixed (white text / dark scrim / gold
+            price) rather than theme tokens — a photo overlay is always dark
+            regardless of light/dark theme. pointer-events-none so clicks fall
+            through to the stretched link beneath it; aria-hidden as the link
+            already conveys this text. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-3 bottom-3 z-0 rounded-xl bg-card/95 p-3 shadow-sm backdrop-blur"
+          className="pointer-events-none absolute inset-x-3 bottom-3 z-0 rounded-xl bg-linear-to-t from-black/85 via-black/55 to-black/20 p-3"
         >
-          <p className="line-clamp-1 font-heading text-sm font-semibold text-foreground">{title}</p>
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+          <p className="line-clamp-1 font-heading text-sm font-semibold text-white [text-shadow:0_1px_4px_rgb(0_0_0/0.85)]">
+            {title}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-white/85 [text-shadow:0_1px_3px_rgb(0_0_0/0.75)]">
             <MapPin className="size-3.5 shrink-0" />
             <span className="line-clamp-1">{place ?? t("locationUnset")}</span>
           </p>
-          <p className="mt-1.5 font-heading text-base font-bold text-primary">{price}</p>
+          <p className="mt-1.5 font-heading text-base font-bold text-amber-300 [text-shadow:0_1px_3px_rgb(0_0_0/0.75)]">
+            {price}
+          </p>
         </div>
       </div>
     </article>

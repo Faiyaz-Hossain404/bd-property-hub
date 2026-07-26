@@ -107,7 +107,7 @@ export function ListingPreview({ listing, saved, backQuery }: Props) {
         ) : null}
 
         <div className="mt-1 flex items-center gap-2">
-          <Button asChild size="sm" className="flex-1">
+          <Button asChild size="sm" className="flex-1 rounded-full">
             <Link href={href}>{t("viewDetails")}</Link>
           </Button>
           <SaveControl listingId={listing.id} saved={saved} variant="button" className="shrink-0" />
