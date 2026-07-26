@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { parse as parseEnv } from 'dotenv';
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 // Shared config lives in the monorepo root .env (single source of truth), but Next
@@ -29,11 +30,25 @@ loadRootEnv();
 // Points next-intl at the per-request i18n config (locale + messages).
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  // Shared workspace package ships TS source, so Next must transpile it.
-  transpilePackages: ['@bdph/types'],
-};
+// Give the dev server its OWN build directory, separate from the production build.
+// `next dev` and `next build` both use webpack; when they share one `.next`, a
+// production build (a gate check, or a pre-deploy `pnpm build`) overwrites the chunk
+// manifest that a running dev server still holds in memory. The next page load then
+// tries to require a chunk that no longer matches and dies with
+// "Cannot read properties of undefined (reading 'call')" /
+// "Cannot find module ./vendor-chunks/…". Separate directories make that collision
+// impossible. Production build + start keep using `.next`, so deploys are unchanged.
+export default function nextConfig(phase) {
+  const isDevServer = phase === PHASE_DEVELOPMENT_SERVER;
 
-export default withNextIntl(nextConfig);
+  /** @type {import('next').NextConfig} */
+  const config = {
+    reactStrictMode: true,
+    // Dev serves from `.next-dev`; build/start use `.next` (Vercel-compatible).
+    distDir: isDevServer ? '.next-dev' : '.next',
+    // Shared workspace package ships TS source, so Next must transpile it.
+    transpilePackages: ['@bdph/types'],
+  };
+
+  return withNextIntl(config);
+}
