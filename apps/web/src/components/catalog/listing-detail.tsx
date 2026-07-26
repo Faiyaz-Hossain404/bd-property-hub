@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, LoaderCircle, MapPin } from "lucide-react"
+import { ArrowLeft, MapPin } from "lucide-react"
 
 import { PIN_FUZZ_MAX_METERS, type PublicListing } from "@bdph/types"
 import { ApiError, getPublicListing } from "@/lib/api"
@@ -18,6 +18,7 @@ import {
   priceLabel,
 } from "@/lib/listing-display"
 import { ListingGallery } from "./listing-gallery"
+import { ListingDetailSkeleton } from "./listing-detail-skeleton"
 import { SaveListingButton } from "./save-listing-button"
 import { ListingModerationControls } from "./listing-moderation-controls"
 import { LocationMap } from "@/components/map/location-map"
@@ -69,13 +70,11 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
     void load()
   }, [load])
 
+  // Same shape as the route-level loading.tsx so the content area doesn't
+  // flicker skeleton -> spinner -> content as this client component takes over
+  // from the route Suspense boundary and waits on getPublicListing().
   if (state.status === "loading") {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-        <LoaderCircle className="size-6 animate-spin" />
-        <p className="mt-3 text-sm">{t("loading")}</p>
-      </div>
-    )
+    return <ListingDetailSkeleton />
   }
 
   if (state.status === "notFound") {

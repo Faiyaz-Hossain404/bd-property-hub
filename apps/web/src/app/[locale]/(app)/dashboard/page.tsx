@@ -8,6 +8,7 @@ import { useRouter } from "@/i18n/navigation"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { Button } from "@/components/ui/button"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
 
 function CenteredState({ children }: { children: ReactNode }) {
   return (
@@ -46,12 +47,19 @@ export default function DashboardPage() {
     )
   }
 
-  // "loading", or "unauthenticated" during the brief redirect to /login.
-  const message = current.status === "unauthenticated" ? t("redirecting") : t("loading")
+  // Genuinely still loading (the getMe() round-trip): show the same skeleton
+  // shape as the route-level loading.tsx so the header/layout don't flicker
+  // out to a bare spinner and back in once this client component takes over.
+  if (current.status === "loading") {
+    return <DashboardSkeleton />
+  }
+
+  // "unauthenticated" during the brief redirect to /login — a distinct,
+  // meaningful state (not "still loading"), so it keeps its own message.
   return (
     <CenteredState>
       <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
-      <p className="mt-3 text-sm text-muted-foreground">{message}</p>
+      <p className="mt-3 text-sm text-muted-foreground">{t("redirecting")}</p>
     </CenteredState>
   )
 }
