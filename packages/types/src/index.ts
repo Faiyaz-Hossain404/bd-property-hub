@@ -93,7 +93,17 @@ export const LISTING_AVAILABILITY_STATUSES = ['available', 'pending', 'sold', 'r
 export type ListingAvailabilityStatus = (typeof LISTING_AVAILABILITY_STATUSES)[number];
 
 // --- Listings (DATABASE_DESIGN.md §5) -----------------------------------------
-export const ASSET_TYPES = ['apartment', 'land', 'building', 'warehouse', 'factory'] as const;
+// Appended rather than slotted in alphabetically: this order drives the filter
+// dropdown and the admin stats buckets, so keeping existing values in place
+// leaves those surfaces stable.
+export const ASSET_TYPES = [
+  'apartment',
+  'land',
+  'building',
+  'warehouse',
+  'factory',
+  'office',
+] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
 export const TRANSACTION_TYPES = ['sale', 'rent', 'shared_ownership'] as const;
@@ -364,9 +374,18 @@ export type TakedownListingInput = z.infer<typeof takedownListingInputSchema>;
 export const PUBLIC_LISTING_PAGE_SIZE = 20;
 export const PUBLIC_LISTING_MAX_PAGE_SIZE = 50;
 // Catalog sort order (DISC-2). `newest` is the default keyset sort; the price
-// orders sort on `pricing.amountBdt`. "Featured" waits on promoted-listing
-// billing, so it's not offered yet.
-export const LISTING_SORTS = ['newest', 'price_asc', 'price_desc'] as const;
+// orders sort on `pricing.amountBdt` and the title orders on `titleEn`.
+// "Featured" waits on promoted-listing billing, so it's not offered yet.
+//
+// Order matters: this array drives the sort dropdown, so `newest` stays first as
+// the default and the two directions of each sort stay adjacent.
+export const LISTING_SORTS = [
+  'newest',
+  'price_asc',
+  'price_desc',
+  'title_asc',
+  'title_desc',
+] as const;
 export type ListingSort = (typeof LISTING_SORTS)[number];
 export const publicListingQuerySchema = z
   .object({

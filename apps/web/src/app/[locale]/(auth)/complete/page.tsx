@@ -1,5 +1,7 @@
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import { getTranslations, setRequestLocale } from "next-intl/server"
+import { LoaderCircle } from "lucide-react"
 
 import { SessionBridge } from "@/components/auth/session-bridge"
 
@@ -16,5 +18,13 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
 export default async function CompletePage({ params }: PageParams) {
   const { locale } = await params
   setRequestLocale(locale)
-  return <SessionBridge />
+  // SessionBridge reads the ?welcome flag with useSearchParams, which opts the
+  // subtree into client-side rendering — without a boundary the whole route is
+  // forced dynamic and the build errors. The fallback matches the bridge's own
+  // loading state, so there is no visible flicker between the two.
+  return (
+    <Suspense fallback={<LoaderCircle className="mx-auto size-6 animate-spin text-primary" />}>
+      <SessionBridge />
+    </Suspense>
+  )
 }

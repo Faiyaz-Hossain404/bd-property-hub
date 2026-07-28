@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
+import { SlidersHorizontal } from "lucide-react"
 
 import {
   ASSET_TYPES,
@@ -13,8 +14,10 @@ import {
   type TransactionType,
 } from "@bdph/types"
 import { usePathname, useRouter } from "@/i18n/navigation"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { CatalogFilters } from "./catalog-filters"
 import { CatalogBrowser } from "./catalog-browser"
 import type { CatalogFilterValue } from "./catalog-filters.types"
@@ -80,6 +83,7 @@ export function CatalogView() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const filters = parseFilters(new URLSearchParams(searchParams.toString()))
+  const [isFilterDrawerOpen, setFilterDrawerOpen] = useState(false)
 
   const applyFilters = useCallback(
     (next: CatalogFilterValue) => {
@@ -96,30 +100,69 @@ export function CatalogView() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-      <aside className="lg:sticky lg:top-24">
+    // Flex rather than a grid template: the sidebar takes a fixed 20rem and the
+    // results column absorbs everything left over. `min-w-0` on that column is
+    // load-bearing — a flex item defaults to min-width:auto, so without it the
+    // card grid would refuse to shrink below its content and push the row wider
+    // than the container.
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {/* Desktop rail. `top-20` clears the 4rem sticky header with a 1rem gap;
+          the height cap plus its own scroll keeps a long filter list from
+          running past the fold, which is what a sticky element would otherwise
+          do (sticky doesn't shrink to the viewport, it just stops moving).
+          Hidden rather than unmounted below `lg` so there's no layout swap on
+          hydration — the drawer below renders the same form. */}
+      <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain">
         <CatalogFilters value={filters} onApply={applyFilters} />
       </aside>
-      <div>
-        <div className="mb-5 flex items-center justify-end gap-2">
-          <Label htmlFor="catalog-sort" className="text-muted-foreground">
-            {t("sort.label")}
-          </Label>
-          <Select
-            value={filters.sort}
-            onValueChange={(next) => handleSortChange(next as ListingSort)}
-          >
-            <SelectTrigger id="catalog-sort" className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LISTING_SORTS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {t(`sort.${option}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          {/* Below `lg` the rail is gone, so the same filters open in a drawer.
+              Applying commits the query and closes it, so the results are
+              visible immediately instead of behind the scrim. */}
+          <Sheet open={isFilterDrawerOpen} onOpenChange={setFilterDrawerOpen}>
+            <SheetTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="lg:hidden">
+                <SlidersHorizontal className="size-4" />
+                {t("filters.title")}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" aria-describedby={undefined} className="overflow-y-auto p-4">
+              <SheetHeader className="p-0">
+                <SheetTitle>{t("filters.title")}</SheetTitle>
+              </SheetHeader>
+              <CatalogFilters
+                value={filters}
+                onApply={(next) => {
+                  applyFilters(next)
+                  setFilterDrawerOpen(false)
+                }}
+                className="border-0 bg-transparent p-0 shadow-none"
+              />
+            </SheetContent>
+          </Sheet>
+
+          <div className="ms-auto flex items-center gap-2">
+            <Label htmlFor="catalog-sort" className="text-muted-foreground">
+              {t("sort.label")}
+            </Label>
+            <Select
+              value={filters.sort}
+              onValueChange={(next) => handleSortChange(next as ListingSort)}
+            >
+              <SelectTrigger id="catalog-sort" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LISTING_SORTS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(`sort.${option}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <CatalogBrowser filters={filters} />
       </div>

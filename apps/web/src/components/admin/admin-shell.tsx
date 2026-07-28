@@ -10,6 +10,7 @@ import { Link, usePathname } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
 import { isRouteActive } from "@/lib/nav"
 import { SiteHeader } from "@/components/layout/site-header"
+import { PAGE_CONTAINER } from "@/lib/layout"
 
 type NavItem = { href: string; key: string; icon: LucideIcon; exact?: boolean }
 
@@ -30,7 +31,7 @@ export function AdminShell({ user, children }: { user: PublicUser; children: Rea
     <div className="min-h-screen bg-background">
       <SiteHeader user={user} />
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 md:flex-row md:py-10 lg:px-8">
+      <div className={`${PAGE_CONTAINER} flex flex-col gap-8 py-8 md:flex-row md:py-10`}>
         <aside className="md:w-56 md:shrink-0">
           <nav
             aria-label={t("navLabel")}

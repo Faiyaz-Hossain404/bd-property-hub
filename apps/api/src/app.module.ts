@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
 import { validateEnv } from './config/env.validation';
+import { createMongooseOptions } from './common/db/mongo-connection';
 import { RedisThrottlerStorage } from './common/throttler/redis-throttler-storage';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
@@ -24,11 +25,13 @@ import { AdminModule } from './admin/admin.module';
       // Root .env shared by the whole monorepo; a local .env can override.
       envFilePath: ['../../.env', '.env'],
     }),
+    // Waits for MongoDB with exponential backoff before connecting, then tunes
+    // how long an operation waits for a healthy server and subscribes to the
+    // connection's 'error' event — without that listener a dropped socket is
+    // re-thrown as an uncaught exception. See common/db/mongo-connection.ts.
     MongooseModule.forRootAsync({
-      useFactory: () => ({
-        uri: process.env.MONGODB_URI,
-        dbName: process.env.MONGODB_DB_NAME,
-      }),
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => createMongooseOptions(config),
     }),
     // Global per-IP rate limit, counted in Redis so every API instance shares one
     // budget (an in-memory store would give N instances N × the limit). Reuses the

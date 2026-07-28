@@ -4,9 +4,9 @@ import { Card } from '@/components/ui/card';
 import { DotPattern } from '@/components/ui/dot-pattern';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import BlurText from '@/components/ui/BlurText';
-import { HeroSearch } from '@/components/home/hero-search';
 import { SiteHeaderAuto } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
+import { PAGE_CONTAINER } from '@/lib/layout';
 
 type PageParams = { params: Promise<{ locale: string }> };
 
@@ -34,11 +34,16 @@ export default async function HomePage({ params }: PageParams) {
   const t = await getTranslations('home');
 
   return (
-    <div className="min-h-screen bg-background">
+    // Sticky footer: the column is at least a viewport tall and <main> takes the
+    // slack, so the footer sits flush at the bottom instead of floating mid-page
+    // with blank background beneath it. The hero section then grows inside main
+    // and centres itself, so leftover height is shared above and below the
+    // content rather than dumped in one gap between the hero and the footer.
+    <div className="flex min-h-screen flex-col bg-background">
       <SiteHeaderAuto />
 
-      <main>
-        <section className="relative overflow-hidden">
+      <main className="flex flex-1 flex-col">
+        <section className="relative flex flex-1 flex-col justify-center overflow-hidden">
           {/* Decorative dotted texture; currentColor (text-olive) tints the dots. */}
           <DotPattern
             className={cn(
@@ -47,7 +52,9 @@ export default async function HomePage({ params }: PageParams) {
             )}
           />
 
-          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:py-28 lg:px-8">
+          <div
+            className={`${PAGE_CONTAINER} relative grid items-center gap-12 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28`}
+          >
             <div>
               {/* Clean inline badge text — no pill/box. Starts the hero cascade. */}
               <BlurText
@@ -114,8 +121,6 @@ export default async function HomePage({ params }: PageParams) {
                 animationFrom={HERO_BLUR_FROM}
                 animationTo={HERO_BLUR_TO}
               />
-
-              <HeroSearch />
             </div>
 
             <dl className="grid gap-4 sm:grid-cols-3 md:grid-cols-1">

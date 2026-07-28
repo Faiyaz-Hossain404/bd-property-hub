@@ -13,6 +13,7 @@
     "browse": "Browse",
     "signIn": "Sign in",
     "signOut": "Sign out",
+    "signingOut": "Signing out...",
     "account": "Account menu",
     "menu": "Menu",
     "openMenu": "Open menu",
@@ -76,7 +77,15 @@
     "verifyInvalid": "This verification link is invalid or has expired.",
     "verifyResendPrompt": "Enter your email to get a new verification link.",
     "verifyResendCta": "Resend verification email",
-    "verifyResent": "If an account exists for that email and still needs verifying, a new link is on its way."
+    "verifyResent": "If an account exists for that email and still needs verifying, a new link is on its way.",
+    "roleTitle": "How will you use BD Property Hub?",
+    "roleSubtitle": "Pick the one that fits. You can switch later from your dashboard.",
+    "role_buyer_title": "I am looking for a property",
+    "role_buyer_body": "Browse verified listings across Bangladesh, save the ones you like, and contact sellers directly.",
+    "role_seller_title": "I want to list a property",
+    "role_seller_body": "Publish your property, manage enquiries, and track how each listing is performing.",
+    "roleError": "We could not set that up. Please try again.",
+    "roleFootnote": "Listings are reviewed by our team before they go live."
   },
   "dashboard": {
     "brand": "BD Property Hub",
@@ -118,37 +127,45 @@
       "becomeSellerError": "Couldn't enable seller access. Please try again.",
       "createTitle": "Create a draft",
       "createDescription": "Start with the basics — you can add photos, pricing, and details before submitting for review.",
+      "workspaceTitle": "Manage your properties",
+      "workspaceDescription": "Start a new listing, or pick up where you left off.",
+      "createCta": "Create New Listing",
+      "createConfirm": "Create draft",
+      "createCancel": "Cancel",
+      "draftsSummaryLabel": "Drafts in progress",
+      "listingsSummaryLabel": "Submitted listings",
+      "listingsLink": "View all listings",
       "titleLabel": "Title",
       "titlePlaceholder": "e.g. 3-bed apartment in Gulshan",
       "titleRequired": "Please enter a title.",
       "assetTypeLabel": "Property type",
       "transactionTypeLabel": "Listing type",
-      "createCta": "Create draft",
       "creating": "Creating…",
       "createError": "Couldn't create the draft. Please try again.",
       "submitCta": "Submit for review",
       "submitting": "Submitting…",
       "submitError": "Couldn't submit the listing. Please try again.",
+      "submitSuccess": "Listing submitted for review.",
+      "submitAutoSaveError": "Nothing was submitted. {reason}",
+      "districtRequired": "Choose a District before submitting. A Division on its own doesn't set the property's location.",
       "submitIncomplete": "Add a {missing} before you can submit this listing.",
       "submitNeedsVerification": "Complete seller verification before you can submit listings for review.",
       "requirementSeparator": " and ",
       "requirements": {
         "location": "location"
       },
-      "loading": "Loading your listings…",
       "loadError": "Couldn't load your listings.",
-      "empty": "No listings yet. Create your first draft above.",
       "editTitle": "Location & price",
       "divisionLabel": "Division",
-      "divisionPlaceholder": "Select a division",
+      "divisionPlaceholder": "Select division",
       "districtLabel": "District",
-      "districtPlaceholder": "Select a district",
+      "districtPlaceholder": "Select district",
       "cityUpazilaLabel": "City / Upazila",
-      "cityUpazilaPlaceholder": "Select a city or upazila (optional)",
+      "cityUpazilaPlaceholder": "Select city/upazila",
       "areaThanaLabel": "Area / Thana",
-      "areaThanaPlaceholder": "Select an area or thana (optional)",
+      "areaThanaPlaceholder": "Select area/thana",
       "cityCorporationLabel": "City corporation",
-      "cityCorporationPlaceholder": "Select a city corporation (optional)",
+      "cityCorporationPlaceholder": "Select city corporation",
       "priceLabel": "Price (BDT)",
       "pricePlaceholder": "e.g. 8500000",
       "priceTypeLabel": "Price type",
@@ -200,7 +217,8 @@
         "land": "Land",
         "building": "Building",
         "warehouse": "Warehouse",
-        "factory": "Factory"
+        "factory": "Factory",
+        "office": "Office"
       },
       "transactionTypes": {
         "sale": "Sale",
@@ -219,8 +237,13 @@
         "title": "Photos",
         "count": "{count} of {max}",
         "empty": "No photos yet.",
-        "addCta": "Add photo",
+        "addCta": "Add photos",
         "uploading": "Uploading…",
+        "uploadingProgress": "Uploading {done} of {total}…",
+        "skippedLimit": "{count, plural, =1 {1 photo was skipped: this listing is at its 20-photo limit.} other {# photos were skipped: this listing is at its 20-photo limit.}}",
+        "skippedType": "{count, plural, =1 {1 file was skipped: only JPG, PNG, WebP, and HEIC images are accepted.} other {# files were skipped: only JPG, PNG, WebP, and HEIC images are accepted.}}",
+        "skippedSize": "{count, plural, =1 {1 file was skipped: each image must be 10 MB or smaller.} other {# files were skipped: each image must be 10 MB or smaller.}}",
+        "batchFailed": "{count, plural, =1 {1 photo failed to upload. Please try it again.} other {# photos failed to upload. Please try them again.}}",
         "tooLarge": "Each image must be 10 MB or smaller.",
         "wrongType": "Please choose a JPG, PNG, WebP, or HEIC image.",
         "uploadError": "Couldn't upload the photo. Please try again.",
@@ -248,7 +271,11 @@
       "viewLive": "View live listing",
       "restoreCta": "Restore listing",
       "restoring": "Restoring…",
-      "restoreError": "Couldn't restore the listing. Please try again."
+      "restoreError": "Couldn't restore the listing. Please try again.",
+      "draftsLink": "View all drafts",
+      "createNeedsVerificationTitle": "Seller verification required",
+      "createNeedsVerificationBody": "Complete seller verification to start creating property listings.",
+      "createNeedsVerificationCta": "View verification status"
     },
     "saved": {
       "sectionTitle": "Saved properties",
@@ -311,7 +338,8 @@
         "land": "Land",
         "building": "Building",
         "warehouse": "Warehouse",
-        "factory": "Factory"
+        "factory": "Factory",
+        "office": "Office"
       },
       "transactionTypes": {
         "sale": "Sale",
@@ -322,6 +350,41 @@
     "adminCta": {
       "title": "Admin dashboard",
       "subtitle": "Analytics, user management, and the review queues."
+    },
+    "drafts": {
+      "title": "Your drafts",
+      "subtitle": "Listings you have started but not yet submitted for review.",
+      "backToDashboard": "Back to dashboard",
+      "empty": "No drafts yet.",
+      "emptyCta": "Create your first draft",
+      "loadError": "We could not load your drafts. Please try again.",
+      "untitled": "Untitled listing",
+      "noPrice": "No price set",
+      "continueEditing": "Continue editing",
+      "deleteCta": "Delete draft",
+      "deleteTitle": "Delete this draft?",
+      "deleteBody": "\"{title}\" and any photos on it will be permanently deleted. This cannot be undone.",
+      "deleteConfirm": "Delete draft",
+      "deleteCancel": "Keep draft",
+      "deleteError": "We could not delete this draft. Please try again.",
+      "assetTypes": {
+        "apartment": "Apartment",
+        "land": "Land",
+        "building": "Building",
+        "warehouse": "Warehouse",
+        "factory": "Factory",
+        "office": "Office"
+      }
+    },
+    "myListings": {
+      "title": "Your listings",
+      "subtitle": "Everything you have submitted for review, and where each one stands.",
+      "backToDashboard": "Back to dashboard",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "empty": "Nothing submitted yet.",
+      "emptyCta": "Finish a draft and submit it",
+      "loadError": "We could not load your listings. Please try again."
     }
   },
   "catalog": {
@@ -359,7 +422,9 @@
       "label": "Sort by",
       "newest": "Newest",
       "price_asc": "Price: low to high",
-      "price_desc": "Price: high to low"
+      "price_desc": "Price: high to low",
+      "title_asc": "Title: A to Z",
+      "title_desc": "Title: Z to A"
     },
     "loadMore": "Load more",
     "loadingMore": "Loading…",
@@ -403,7 +468,8 @@
       "land": "Land",
       "building": "Building",
       "warehouse": "Warehouse",
-      "factory": "Factory"
+      "factory": "Factory",
+      "office": "Office"
     },
     "transactionTypes": {
       "sale": "For sale",
@@ -426,15 +492,14 @@
     "landUnits": {
       "katha": "katha",
       "sqft": "sqft"
-    }
+    },
+    "closePreview": "Close quick view"
   },
   "home": {
     "badge": "Verified listings · Brokered safely",
     "headline": "Find property in Bangladesh",
     "headlineAccent": "from anywhere in the world",
     "subhead": "Land, apartments, and commercial space — every listing verified and every deal brokered by our team, in English and Bangla.",
-    "searchPlaceholder": "Search by area, city, or district",
-    "searchCta": "Search",
     "statDistrictsLabel": "Districts covered",
     "statVerifiedLabel": "Documents verified",
     "statDivisionsLabel": "Divisions served"

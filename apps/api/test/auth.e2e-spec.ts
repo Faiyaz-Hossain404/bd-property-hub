@@ -56,6 +56,28 @@ describe('Auth (e2e)', () => {
     await agent.get(`${API}/auth/me`).expect(401);
   });
 
+  // Logout must be idempotent. It used to sit behind SessionAuthGuard, so a
+  // session that was already revoked (password reset, admin suspend) or expired
+  // got a 401 BEFORE the handler ran — the Set-Cookie clearing the cookie was
+  // never sent, and the browser held a dead bdph_session until it was cleared by
+  // hand. That is the state a user hits when "Sign out" appears to do nothing.
+  it('clears the cookie on logout even when the session is already revoked', async () => {
+    const { agent } = await registerUser(ctx);
+
+    // First logout revokes the session server-side.
+    await agent.post(`${API}/auth/logout`).send({}).expect(200);
+
+    // Replay the now-dead cookie: still 200, and still asked to clear.
+    const replay = await agent.post(`${API}/auth/logout`).send({}).expect(200);
+    const cleared = (replay.headers['set-cookie'] as unknown as string[] | undefined) ?? [];
+    expect(cleared.some((cookie) => cookie.startsWith('bdph_session=;'))).toBe(true);
+  });
+
+  it('accepts logout with no session cookie at all', async () => {
+    const response = await request(ctx.server).post(`${API}/auth/logout`).send({}).expect(200);
+    expect(response.body).toEqual({ data: { success: true } });
+  });
+
   it('rejects a duplicate email registration with 409', async () => {
     const { user } = await registerUser(ctx);
     await request(ctx.server)

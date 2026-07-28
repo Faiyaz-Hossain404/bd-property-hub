@@ -20,6 +20,7 @@ import { SiteHeader } from "@/components/layout/site-header"
 import { ListingsSection } from "@/components/dashboard/listings-section"
 import { SavedSection } from "@/components/dashboard/saved-section"
 import { SellerVerificationSection } from "@/components/dashboard/seller-verification-section"
+import { PAGE_CONTAINER } from "@/lib/layout"
 
 const MODERATOR_ROLES = ["admin", "admin_prime"] as const
 const SELLER_ROLE = "seller"
@@ -62,61 +63,86 @@ export function DashboardShell({ user, onUserRefresh }: Props) {
           )}
         />
 
-        <div className="relative mx-auto max-w-2xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
+        {/* Shares the app-wide container so the dashboard's edges line up with
+            the header above it. The wide container is also what lets the paired
+            sections below sit side by side instead of stacking. */}
+        <div className={`${PAGE_CONTAINER} relative py-12 md:py-16`}>
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
             {t("welcome", { name: user.name })}
           </h1>
           <p className="mt-3 max-w-xl text-muted-foreground">{t("welcomeSubtitle")}</p>
 
-          <Card className="mt-10 max-w-2xl gap-0 p-0">
-            <CardHeader className="border-b px-6 py-5">
-              <CardTitle className="text-lg">{t("accountTitle")}</CardTitle>
-              <CardDescription>{t("accountDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent className="divide-y divide-border/60 px-6 py-2">
-              <Row label={t("emailLabel")}>
-                <span className="text-foreground">{user.email}</span>
-                <Badge variant={user.emailVerified ? "default" : "outline"}>
-                  {user.emailVerified ? t("emailVerified") : t("emailUnverified")}
-                </Badge>
-              </Row>
+          {/* Two columns on lg+: the working surfaces (listings, saved) take the
+              wide side, while the reference/status cards sit in a narrower rail.
+              Splitting it this way is what stops the account card from stretching
+              across the full 98rem container. Both columns space their own
+              children with gap-8, so the sections carry no vertical margins of
+              their own — otherwise the two columns' tops would not align. */}
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="flex flex-col gap-8 lg:col-span-2">
+              <ListingsSection user={user} onUserRefresh={onUserRefresh} />
+              <SavedSection />
+            </div>
 
-              <Row label={t("roleLabel")}>
-                <Badge variant="secondary">{t(`roles.${user.role}`)}</Badge>
-              </Row>
+            <aside className="flex flex-col gap-8 lg:col-span-1">
+              <Card className="gap-0 p-0">
+                <CardHeader className="border-b px-6 py-5">
+                  <CardTitle className="text-lg">{t("accountTitle")}</CardTitle>
+                  <CardDescription>{t("accountDescription")}</CardDescription>
+                </CardHeader>
+                <CardContent className="divide-y divide-border/60 px-6 py-2">
+                  <Row label={t("emailLabel")}>
+                    <span className="text-foreground">{user.email}</span>
+                    <Badge variant={user.emailVerified ? "default" : "outline"}>
+                      {user.emailVerified ? t("emailVerified") : t("emailUnverified")}
+                    </Badge>
+                  </Row>
 
-              <Row label={t("statusLabel")}>
-                <Badge variant={statusVariant(user.status)}>{t(`statuses.${user.status}`)}</Badge>
-              </Row>
+                  <Row label={t("roleLabel")}>
+                    <Badge variant="secondary">{t(`roles.${user.role}`)}</Badge>
+                  </Row>
 
-              <Row label={t("memberSince")}>
-                <span className="text-foreground">{memberSince}</span>
-              </Row>
-            </CardContent>
-          </Card>
+                  <Row label={t("statusLabel")}>
+                    <Badge variant={statusVariant(user.status)}>
+                      {t(`statuses.${user.status}`)}
+                    </Badge>
+                  </Row>
 
-          {isModerator ? (
-            <Link
-              href="/admin"
-              className="group mt-10 flex max-w-2xl items-center justify-between gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground shadow-sm ring-1 ring-primary/20 transition-colors hover:bg-primary/90"
-            >
-              <span className="flex items-center gap-3">
-                <Gauge className="size-5" />
-                <span>
-                  <span className="block font-heading font-semibold">{t("adminCta.title")}</span>
-                  <span className="block text-sm text-primary-foreground/80">
-                    {t("adminCta.subtitle")}
+                  <Row label={t("memberSince")}>
+                    <span className="text-foreground">{memberSince}</span>
+                  </Row>
+                </CardContent>
+              </Card>
+
+              {isModerator ? (
+                <Link
+                  href="/admin"
+                  className="group flex items-center justify-between gap-4 rounded-xl bg-primary px-6 py-5 text-primary-foreground shadow-sm ring-1 ring-primary/20 transition-colors hover:bg-primary/90"
+                >
+                  <span className="flex items-center gap-3">
+                    <Gauge className="size-5" />
+                    <span>
+                      <span className="block font-heading font-semibold">
+                        {t("adminCta.title")}
+                      </span>
+                      <span className="block text-sm text-primary-foreground/80">
+                        {t("adminCta.subtitle")}
+                      </span>
+                    </span>
                   </span>
-                </span>
-              </span>
-              <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          ) : null}
-          {isSeller ? (
-            <SellerVerificationSection user={user} onUserRefresh={onUserRefresh} />
-          ) : null}
-          <ListingsSection user={user} onUserRefresh={onUserRefresh} />
-          <SavedSection />
+                  <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              ) : null}
+
+              {/* Anchor target for the "Complete seller verification" CTA shown in
+                  place of the create-draft form while a seller is unverified. */}
+              {isSeller ? (
+                <div id="seller-verification" className="scroll-mt-24">
+                  <SellerVerificationSection user={user} onUserRefresh={onUserRefresh} />
+                </div>
+              ) : null}
+            </aside>
+          </div>
         </div>
       </main>
     </div>

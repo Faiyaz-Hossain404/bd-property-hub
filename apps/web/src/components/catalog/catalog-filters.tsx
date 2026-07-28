@@ -1,25 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useLocale, useTranslations } from "next-intl"
 
-import {
-  ASSET_TYPES,
-  TRANSACTION_TYPES,
-  type GeoCityUpazila,
-  type GeoDistrict,
-  type GeoDivision,
-} from "@bdph/types"
-import { getCitiesUpazilas, getDistricts, getDivisions } from "@/lib/api"
+import { ASSET_TYPES, TRANSACTION_TYPES } from "@bdph/types"
+import { getCitiesUpazilas, getDistricts } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -34,9 +28,24 @@ const ALL_VALUE = "__all__"
 type Props = {
   value: CatalogFilterValue
   onApply: (next: CatalogFilterValue) => void
+  // Lets the mobile drawer drop the card chrome (the drawer already is the
+  // surface) without a second copy of the form.
+  className?: string
 }
 
-type DivisionGroup = { division: GeoDivision; districts: GeoDistrict[] }
+type GeoNamed = { nameEn: string; nameBn: string }
+
+// Strict A-Z over the name actually on screen, using the active locale's
+// collation — Bangla names order by the Bengali alphabet, not by their UTF-16
+// code points, which is what a bare `<` comparison would give. Copies before
+// sorting so the cached query arrays are never mutated in place.
+function sortByName<T extends GeoNamed>(rows: readonly T[], locale: string): T[] {
+  return [...rows].sort((a, b) => {
+    const left = locale === "bn" ? a.nameBn : a.nameEn
+    const right = locale === "bn" ? b.nameBn : b.nameEn
+    return left.localeCompare(right, locale)
+  })
+}
 
 // Public catalog facet bar (FR-B1): district (DISC-3), asset type, transaction
 // type, and an inclusive whole-BDT price range. Holds its own draft state so
@@ -45,11 +54,13 @@ type DivisionGroup = { division: GeoDivision; districts: GeoDistrict[] }
 // the URL changes elsewhere (e.g. browser back), so the controls always reflect
 // the active query.
 //
-// District is one flat Select grouped by division: we fetch all Zillas once
-// (the editor uses a division→district cascade, but a single grouped list
-// keeps the URL to just district_id and reconstructs a shared link without
-// extra state). The few-dozen-district list is small enough to render whole.
-export function CatalogFilters({ value, onApply }: Props) {
+// District is one flat, strictly A-Z Select: we fetch all 64 Zillas once (the
+// editor uses a division→district cascade, but a single flat list keeps the URL
+// to just district_id and reconstructs a shared link without extra state). It
+// used to be grouped under division headings, which broke the alphabet — a
+// reader scanning for "Rangpur" had to know which division it sits in first. The
+// few-dozen-district list is small enough to render whole.
+export function CatalogFilters({ value, onApply, className }: Props) {
   const t = useTranslations("catalog")
   const locale = useLocale()
 
@@ -62,49 +73,27 @@ export function CatalogFilters({ value, onApply }: Props) {
   const [priceMax, setPriceMax] = useState(value.priceMax)
   const [error, setError] = useState<string | null>(null)
 
-  const [divisions, setDivisions] = useState<GeoDivision[]>([])
-  const [districts, setDistricts] = useState<GeoDistrict[]>([])
-  const [citiesUpazilas, setCitiesUpazilas] = useState<GeoCityUpazila[]>([])
-  const [geoError, setGeoError] = useState(false)
-
-  // Geography is reference data — fetch divisions (for the group labels) and the
-  // full district list once.
-  useEffect(() => {
-    let active = true
-    Promise.all([getDivisions(), getDistricts()])
-      .then(([divisionList, districtList]) => {
-        if (!active) return
-        setDivisions(divisionList)
-        setDistricts(districtList)
-      })
-      .catch(() => {
-        if (active) setGeoError(true)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
+  // Geography is immutable reference data, so it goes through the query cache
+  // rather than a hand-rolled effect. That matters here specifically: the catalog
+  // mounts this form twice below `lg` (the rail and the drawer), and a shared
+  // cache means the district list is still fetched exactly once.
+  const districtsQuery = useQuery({
+    queryKey: ["geo", "districts"],
+    queryFn: () => getDistricts(),
+    staleTime: Infinity,
+  })
 
   // The city/upazila drill-down cascades off the selected district; the full list
-  // is large, so it's only fetched once a district is chosen. Clearing the district
-  // clears the drill-down list too.
-  useEffect(() => {
-    if (!districtId) {
-      setCitiesUpazilas([])
-      return
-    }
-    let active = true
-    getCitiesUpazilas(districtId)
-      .then((data) => {
-        if (active) setCitiesUpazilas(data)
-      })
-      .catch(() => {
-        if (active) setGeoError(true)
-      })
-    return () => {
-      active = false
-    }
-  }, [districtId])
+  // is large, so it's only fetched once a district is chosen. With no district the
+  // query is disabled and its data is undefined, which empties the drill-down.
+  const citiesUpazilasQuery = useQuery({
+    queryKey: ["geo", "cities-upazilas", districtId],
+    queryFn: () => getCitiesUpazilas(districtId),
+    enabled: districtId !== "",
+    staleTime: Infinity,
+  })
+
+  const geoError = districtsQuery.isError || citiesUpazilasQuery.isError
 
   useEffect(() => {
     setQ(value.q)
@@ -130,18 +119,23 @@ export function CatalogFilters({ value, onApply }: Props) {
     setCityUpazilaId("")
   }
 
-  // Districts grouped under their division, divisions kept in their API order.
-  const districtGroups = useMemo<DivisionGroup[]>(() => {
-    const byDivision = new Map<string, GeoDistrict[]>()
-    for (const district of districts) {
-      const group = byDivision.get(district.divisionId)
-      if (group) group.push(district)
-      else byDivision.set(district.divisionId, [district])
-    }
-    return divisions
-      .map((division) => ({ division, districts: byDivision.get(division.id) ?? [] }))
-      .filter((group) => group.districts.length > 0)
-  }, [divisions, districts])
+  // One flat run of districts, A-Z. No division headings: the whole point is that
+  // the list opens on Bagerhat and ends on Thakurgaon with nothing in between.
+  //
+  // The `?? []` lives inside the callback on purpose. Hoisting it to a const
+  // would mint a fresh array on every render, so the dep would never compare
+  // equal and the memo would re-sort all 64 districts each time — the cached
+  // query data itself is a stable reference, so depending on it directly is what
+  // makes the memo do its job.
+  const sortedDistricts = useMemo(
+    () => sortByName(districtsQuery.data ?? [], locale),
+    [districtsQuery.data, locale],
+  )
+
+  const sortedCitiesUpazilas = useMemo(
+    () => sortByName(citiesUpazilasQuery.data ?? [], locale),
+    [citiesUpazilasQuery.data, locale],
+  )
 
   const hasActiveFilter =
     value.q !== "" ||
@@ -196,7 +190,7 @@ export function CatalogFilters({ value, onApply }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+      className={cn("rounded-2xl border border-border bg-card p-5 shadow-sm", className)}
       aria-label={t("filters.title")}
     >
       <div className="mb-5 flex items-center justify-between">
@@ -242,17 +236,10 @@ export function CatalogFilters({ value, onApply }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-                {districtGroups.map((group) => (
-                  <SelectGroup key={group.division.id}>
-                    <SelectLabel>
-                      {locale === "bn" ? group.division.nameBn : group.division.nameEn}
-                    </SelectLabel>
-                    {group.districts.map((district) => (
-                      <SelectItem key={district.id} value={district.id}>
-                        {locale === "bn" ? district.nameBn : district.nameEn}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                {sortedDistricts.map((district) => (
+                  <SelectItem key={district.id} value={district.id}>
+                    {locale === "bn" ? district.nameBn : district.nameEn}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -270,7 +257,7 @@ export function CatalogFilters({ value, onApply }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_VALUE}>{t("filters.all")}</SelectItem>
-                {citiesUpazilas.map((row) => (
+                {sortedCitiesUpazilas.map((row) => (
                   <SelectItem key={row.id} value={row.id}>
                     {locale === "bn" ? row.nameBn : row.nameEn}
                   </SelectItem>

@@ -4,6 +4,7 @@ import { Inter, Hind_Siliguri } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { Toaster } from 'sonner';
 import { routing, type Locale } from '@/i18n/routing';
 import { QueryProvider } from '@/providers/query-provider';
 import '../globals.css';
@@ -50,13 +51,21 @@ export default async function LocaleLayout({
       signInUrl={`/${locale}/login`}
       signUpUrl={`/${locale}/register`}
       signInForceRedirectUrl={`/${locale}/complete`}
-      signUpForceRedirectUrl={`/${locale}/complete`}
+      // ?welcome=1 is what tells /complete this arrival is a sign-UP rather than
+      // a sign-in, so the one-time "buyer or seller?" step is offered to new
+      // accounts only. It gates the prompt, never the role itself.
+      signUpForceRedirectUrl={`/${locale}/complete?welcome=1`}
       appearance={{ variables: { colorPrimary: '#a16207', borderRadius: '0.625rem' } }}
     >
       <html lang={locale} className={`${latin.variable} ${bengali.variable}`}>
         <body>
           <NextIntlClientProvider messages={messages}>
             <QueryProvider>{children}</QueryProvider>
+            {/* Mounted once at the root so any client component can call
+                toast.*() without threading a provider through. richColors is
+                what makes toast.error() read as an error rather than a neutral
+                notice. */}
+            <Toaster position="top-right" richColors closeButton />
           </NextIntlClientProvider>
         </body>
       </html>

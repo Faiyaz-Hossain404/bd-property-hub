@@ -7,6 +7,7 @@ import {
   resetData,
   startTestApp,
   stopTestApp,
+  type TestActor,
   type TestContext,
 } from './utils/test-app';
 
@@ -28,11 +29,42 @@ describe('Seller verification (e2e)', () => {
     await resetData(ctx);
   });
 
-  it('blocks an unverified seller from submitting, then allows it once verified', async () => {
+  // Approves `seller` through the real request → approve flow.
+  async function verify(seller: TestActor, admin: TestActor): Promise<void> {
+    await seller.agent.post(`${API}/me/verification/request`).send({}).expect(201);
+    await admin.agent
+      .post(`${API}/admin/seller-verification/${seller.user.id}/approve`)
+      .send({})
+      .expect(201);
+  }
+
+  it('blocks an unverified seller from creating a draft, then allows it once verified', async () => {
+    const admin = await registerUser(ctx, ['admin']);
+    const seller = await registerUser(ctx, ['seller']);
+    const districtId = await firstDistrictId(ctx);
+    const body = {
+      titleEn: 'Gated Listing',
+      assetType: 'apartment',
+      transactionType: 'sale',
+      location: { districtId },
+    };
+
+    // The gate now sits on creation, not just submission: an unverified seller
+    // cannot start a listing at all.
+    await seller.agent.post(`${API}/listings`).send(body).expect(403);
+
+    await verify(seller, admin);
+
+    const draft = await seller.agent.post(`${API}/listings`).send(body).expect(201);
+    expect((draft.body.data as PublicListing).publicationStatus).toBe('draft');
+  });
+
+  it('blocks submitting a draft whose owner is no longer verified', async () => {
     const admin = await registerUser(ctx, ['admin']);
     const seller = await registerUser(ctx, ['seller']);
     const districtId = await firstDistrictId(ctx);
 
+    await verify(seller, admin);
     const draft = await seller.agent
       .post(`${API}/listings`)
       .send({
@@ -44,17 +76,22 @@ describe('Seller verification (e2e)', () => {
       .expect(201);
     const listingId = (draft.body.data as PublicListing).id;
 
-    // Unverified seller → the KYC gate blocks submission.
+    // Now that creation is gated too, the only way to hold a draft while
+    // unverified is to lose verification after drafting — a seller who is later
+    // rejected or reset. Written straight to the DB because no API route revokes
+    // an approved seller yet; the point is to prove the submit gate still stands
+    // on its own rather than relying on the creation gate to have caught it.
+    await ctx.connection
+      .collection('users')
+      .updateOne({ email: seller.user.email }, { $set: { kycStatus: 'unverified' } });
+
     await seller.agent.post(`${API}/listings/${listingId}/submit`).send({}).expect(403);
 
-    // Verify: seller requests, admin approves.
-    await seller.agent.post(`${API}/me/verification/request`).send({}).expect(201);
-    await admin.agent
-      .post(`${API}/admin/seller-verification/${seller.user.id}/approve`)
-      .send({})
-      .expect(201);
+    // Restored: the same listing goes through to the review queue.
+    await ctx.connection
+      .collection('users')
+      .updateOne({ email: seller.user.email }, { $set: { kycStatus: 'verified' } });
 
-    // Now the same listing submits through to the review queue.
     const submitted = await seller.agent
       .post(`${API}/listings/${listingId}/submit`)
       .send({})

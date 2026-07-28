@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Building2, LogOut, Menu } from "lucide-react"
+import { Building2, LoaderCircle, LogOut, Menu } from "lucide-react"
 import type { PublicUser } from "@bdph/types"
 
 import { Link, usePathname } from "@/i18n/navigation"
@@ -23,6 +23,7 @@ import {
 import { LocaleSwitch } from "@/components/auth/locale-switch"
 import { UserMenu } from "@/components/layout/user-menu"
 import { HeaderSearch } from "@/components/layout/header-search"
+import { PAGE_CONTAINER } from "@/lib/layout"
 
 type Variant = "default" | "minimal"
 type NavLink = { href: string; label: string; exact?: boolean }
@@ -84,7 +85,7 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-sm backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <div className={`${PAGE_CONTAINER} flex h-16 items-center gap-4`}>
         {variant === "minimal" ? (
           <div className="flex w-full items-center justify-between">
             <Brand />
@@ -94,7 +95,7 @@ export function SiteHeader({
           <>
             <Brand />
 
-            <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+            <nav className="hidden flex-1 items-center justify-center gap-8 md:flex">
               {links.map((link) => {
                 const active = isRouteActive(pathname, link.href, link.exact)
                 return (
@@ -149,7 +150,7 @@ function MobileNav({
 }) {
   const t = useTranslations("nav")
   const [open, setOpen] = useState(false)
-  const { logout } = useLogout()
+  const { logout, isPending } = useLogout()
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -202,16 +203,19 @@ function MobileNav({
         <div className="mt-auto flex flex-col gap-3 border-t border-border p-4">
           <LocaleSwitch />
           {user ? (
+            // The sheet is closed via the onSettled callback rather than on
+            // click: closing immediately would unmount this button and hide the
+            // pending state, and never closing would leave the drawer open on
+            // top of /login.
             <Button
               variant="destructive"
               className="w-full"
-              onClick={() => {
-                setOpen(false)
-                logout()
-              }}
+              disabled={isPending}
+              aria-busy={isPending}
+              onClick={() => logout(() => setOpen(false))}
             >
-              <LogOut />
-              {t("signOut")}
+              {isPending ? <LoaderCircle className="animate-spin" /> : <LogOut />}
+              {isPending ? t("signingOut") : t("signOut")}
             </Button>
           ) : (
             <SheetClose asChild>

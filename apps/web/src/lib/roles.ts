@@ -17,3 +17,15 @@ export function isStaff(user: PublicUser | null | undefined): boolean {
 export function isAdminPrime(user: PublicUser | null | undefined): boolean {
   return !!user && user.role === "admin_prime"
 }
+
+// The single source of truth for "where does this user belong after signing in".
+// Buyers have nothing to manage, so they land in the catalog; anyone who can
+// list (seller, and admins by inheritance) lands on the dashboard. Tested
+// against `roles` rather than `role` so an admin is not sent to the catalog.
+//
+// Locale-free on purpose: callers navigate with the locale-aware router from
+// @/i18n/navigation, which prefixes the active locale (so "/catalog" resolves to
+// /en/catalog or /bn/catalog).
+export function postAuthPath(user: PublicUser | null | undefined): "/catalog" | "/dashboard" {
+  return user?.roles.includes("seller") ? "/dashboard" : "/catalog"
+}

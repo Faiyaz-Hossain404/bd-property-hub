@@ -31,10 +31,19 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  // Batch upload progress. Kept out of the transition on purpose: updates inside
+  // startTransition are low priority, so a counter driven from in there would
+  // lag behind the work it is meant to be reporting.
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const photos = listing.media
   const atLimit = photos.length >= MAX_PHOTOS
+  const remainingSlots = MAX_PHOTOS - photos.length
   const orderIds = photos.map((photo) => photo.id)
+  const isUploading = progress !== null
+  // One flag for every control: a reorder must not land mid-batch, and a second
+  // batch must not start on top of the first.
+  const busy = isPending || isUploading
 
   // Shared runner for the reorder/remove operations: clears prior errors, awaits
   // the API call, and hands the refreshed listing back to the parent. Any op in
@@ -71,34 +80,98 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
     runPhotoOp(() => removeListingMedia(listing.id, id))
   }
 
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    // Reset so picking the same file again still fires onChange.
+  // Batch upload. The picker is `multiple`, so this takes anything from one file
+  // to the whole remaining allowance in a single pass.
+  //
+  // Two phases, and the split is deliberate:
+  //
+  //   1. Cloudinary uploads run CONCURRENTLY (Promise.allSettled). This is the
+  //      slow, bandwidth-bound leg, and it is the only part where parallelism
+  //      actually buys anything. allSettled rather than all so one bad file
+  //      cannot cancel the other nineteen.
+  //
+  //   2. Commits run SEQUENTIALLY, in the order the files were picked. The
+  //      server's commit is already race-safe (an atomic findOneAndUpdate with a
+  //      $push), but it stamps `position` from the media length it read BEFORE
+  //      the push — so firing commits in parallel lets two photos claim the same
+  //      position. Cover is *defined* as position 0, so a collision there makes
+  //      the cover ambiguous. Going in order also gives the guarantee we want:
+  //      on a listing with no photos yet, the first file the seller picked lands
+  //      at position 0 and is therefore the cover. If a cover already exists it
+  //      keeps its slot, because these append after it.
+  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(event.target.files ?? [])
+    // Reset so picking the same files again still fires onChange.
     event.target.value = ""
-    if (!file) return
+    if (picked.length === 0) return
     setError(null)
 
-    // Some browsers report an empty type for HEIC — only reject a known-bad type
-    // and let the server make the final call.
-    if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
-      setError(t("photos.wrongType"))
-      return
+    // Trim to what still fits under the cap before validating, so the count of
+    // "skipped, no room" is separate from "skipped, bad file".
+    const overLimit = Math.max(0, picked.length - remainingSlots)
+    const candidates = picked.slice(0, remainingSlots)
+
+    let wrongType = 0
+    let tooLarge = 0
+    const accepted: File[] = []
+    for (const file of candidates) {
+      // Some browsers report an empty type for HEIC — only reject a known-bad
+      // type and let the server make the final call.
+      if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
+        wrongType += 1
+      } else if (file.size > MAX_BYTES) {
+        tooLarge += 1
+      } else {
+        accepted.push(file)
+      }
     }
-    if (file.size > MAX_BYTES) {
-      setError(t("photos.tooLarge"))
+
+    const notes: string[] = []
+    if (overLimit > 0) notes.push(t("photos.skippedLimit", { count: overLimit }))
+    if (wrongType > 0) notes.push(t("photos.skippedType", { count: wrongType }))
+    if (tooLarge > 0) notes.push(t("photos.skippedSize", { count: tooLarge }))
+
+    if (accepted.length === 0) {
+      setError(notes.join(" "))
       return
     }
 
-    startTransition(async () => {
-      try {
+    setProgress({ done: 0, total: accepted.length })
+
+    // Phase 1 — bytes to Cloudinary, all at once.
+    const uploads = await Promise.allSettled(
+      accepted.map(async (file) => {
         const ticket = await getListingUploadTicket(listing.id)
-        const uploaded = await uploadImageToCloudinary(ticket, file)
-        const updated = await commitListingMedia(listing.id, uploaded)
-        onUpdated(updated)
-      } catch (uploadError) {
-        setError(uploadError instanceof ApiError ? uploadError.message : t("photos.uploadError"))
+        return uploadImageToCloudinary(ticket, file)
+      }),
+    )
+
+    // Phase 2 — record them with our API, one at a time, in pick order.
+    let latest: PublicListing | null = null
+    let failed = 0
+    let processed = 0
+    for (const result of uploads) {
+      if (result.status === "fulfilled") {
+        try {
+          latest = await commitListingMedia(listing.id, result.value)
+        } catch (commitError) {
+          console.error("Photo commit error:", commitError)
+          failed += 1
+        }
+      } else {
+        console.error("Photo upload error:", result.reason)
+        failed += 1
       }
-    })
+      processed += 1
+      setProgress({ done: processed, total: accepted.length })
+    }
+
+    // One update at the end: `latest` is the last commit's response, which
+    // already contains every photo added in this batch.
+    if (latest) onUpdated(latest)
+    if (failed > 0) notes.push(t("photos.batchFailed", { count: failed }))
+    setError(notes.length > 0 ? notes.join(" ") : null)
+    setProgress(null)
   }
 
   return (
@@ -112,18 +185,27 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
           size="sm"
           variant="outline"
           onClick={() => inputRef.current?.click()}
-          disabled={isPending || atLimit}
+          disabled={busy || atLimit}
         >
-          {isPending ? (
+          {busy ? (
             <LoaderCircle className="size-4 animate-spin" />
           ) : (
             <ImagePlus className="size-4" />
           )}
-          {isPending ? t("photos.uploading") : t("photos.addCta")}
+          {progress
+            ? t("photos.uploadingProgress", { done: progress.done, total: progress.total })
+            : busy
+              ? t("photos.uploading")
+              : t("photos.addCta")}
         </Button>
+        {/* `multiple` lets the seller pick the whole batch in one pass. The
+            accept list is the same one handleChange re-checks, so the picker
+            filters and the code still validates — the picker's filter is a
+            convenience, not a guarantee. */}
         <input
           ref={inputRef}
           type="file"
+          multiple
           accept={ACCEPTED_TYPES.join(",")}
           className="hidden"
           onChange={handleChange}
@@ -161,28 +243,28 @@ export function ListingPhotos({ listing, onUpdated }: Props) {
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-foreground/45 p-1">
                   <PhotoControl
                     label={t("photos.moveLeft")}
-                    disabled={isPending || index === 0}
+                    disabled={busy || index === 0}
                     onClick={() => handleMove(photo.id, -1)}
                   >
                     <ChevronLeft className="size-3.5" />
                   </PhotoControl>
                   <PhotoControl
                     label={t("photos.moveRight")}
-                    disabled={isPending || index === photos.length - 1}
+                    disabled={busy || index === photos.length - 1}
                     onClick={() => handleMove(photo.id, 1)}
                   >
                     <ChevronRight className="size-3.5" />
                   </PhotoControl>
                   <PhotoControl
                     label={t("photos.makeCover")}
-                    disabled={isPending || isCover}
+                    disabled={busy || isCover}
                     onClick={() => handleMakeCover(photo.id)}
                   >
                     <Star className="size-3.5" />
                   </PhotoControl>
                   <PhotoControl
                     label={t("photos.remove")}
-                    disabled={isPending}
+                    disabled={busy}
                     onClick={() => handleRemove(photo.id)}
                   >
                     <Trash2 className="size-3.5" />

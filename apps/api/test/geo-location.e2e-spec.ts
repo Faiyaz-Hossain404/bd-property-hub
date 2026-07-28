@@ -112,7 +112,10 @@ describe('Geo depth & location (e2e)', () => {
   });
 
   it('rejects a city/upazila that does not belong to the chosen district (400)', async () => {
-    const seller = await registerUser(ctx, ['seller']);
+    // Verified: these assert GEO validation, so the seller must clear the
+    // KYC gate on POST /listings or the 403 would mask the 400 under test.
+    const admin = await registerUser(ctx, ['admin']);
+    const seller = await createVerifiedSeller(ctx, admin);
     const districts = await ctx.app.get(GeoService).listDistricts();
     const districtA = districts[0]!.id;
     const districtB = districts[1]!.id;
@@ -130,7 +133,10 @@ describe('Geo depth & location (e2e)', () => {
   });
 
   it('rejects an area/thana that does not belong to the chosen city/upazila (400)', async () => {
-    const seller = await registerUser(ctx, ['seller']);
+    // Verified: these assert GEO validation, so the seller must clear the
+    // KYC gate on POST /listings or the 403 would mask the 400 under test.
+    const admin = await registerUser(ctx, ['admin']);
+    const seller = await createVerifiedSeller(ctx, admin);
     const districtId = await firstDistrictId(ctx);
     const upazilas = await citiesUpazilasIn(ctx, districtId);
     const areaOfSecond = await firstAreaThanaId(ctx, upazilas[1]!);
@@ -148,7 +154,10 @@ describe('Geo depth & location (e2e)', () => {
   });
 
   it('rejects an area/thana sent without its parent city/upazila (400)', async () => {
-    const seller = await registerUser(ctx, ['seller']);
+    // Verified: these assert GEO validation, so the seller must clear the
+    // KYC gate on POST /listings or the 403 would mask the 400 under test.
+    const admin = await registerUser(ctx, ['admin']);
+    const seller = await createVerifiedSeller(ctx, admin);
     const districtId = await firstDistrictId(ctx);
     const [upazilaId] = await citiesUpazilasIn(ctx, districtId);
     const areaThanaId = await firstAreaThanaId(ctx, upazilaId!);

@@ -32,6 +32,11 @@ import type {
 // default matches the workspace .env.example so dev works without extra wiring.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
+// Generous on purpose. The sign-out UI is bounded by its own 1.5s redirect
+// safeguard, so this no longer gates anything the user waits on; it exists only
+// so the request cannot dangle forever if the page somehow does not navigate.
+const LOGOUT_TIMEOUT_MS = 10_000;
+
 // status 0 is reserved for transport failures (network down / CORS / DNS) where
 // no HTTP response is ever produced. Forms map status → translated copy.
 export class ApiError extends Error {
@@ -207,14 +212,31 @@ export function getMe(): Promise<PublicUser> {
 
 // Revokes the server session and clears the cookie. Returns nothing useful;
 // callers redirect to /login afterward.
+//
+// `keepalive` is the important part. Sign-out redirects with a full page load
+// after at most 1.5s, and a normal fetch is cancelled the moment the document
+// unloads — so on any connection slower than that (a cold API instance, mobile)
+// the request would die in flight, leaving the session UNREVOKED and its
+// httpOnly cookie in place. Only the server can clear that cookie, so a killed
+// request means the user is still signed in on the next visit. `keepalive` lets
+// the browser finish the request and apply its Set-Cookie across the navigation.
+//
+// The AbortController is now only a dangle guard, not a deadline the user waits
+// on: the caller's redirect safeguard already bounds the UI independently.
 export async function logoutUser(): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LOGOUT_TIMEOUT_MS);
   try {
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
+      keepalive: true,
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError('Network request failed', 0);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -323,6 +345,14 @@ export function updateListing(id: string, input: UpdateListingInput): Promise<Pu
 
 export function submitListingForReview(id: string): Promise<PublicListing> {
   return postJson<PublicListing>(`/listings/${id}/submit`, {});
+}
+
+// Owner self-service delete (DELETE /listings/:id) — permanently removes a draft
+// that has never been submitted for review, along with its photos. The API 409s
+// on anything that has been through review (use withdrawListing for those), so
+// callers should surface the returned message rather than assume success.
+export function deleteListing(id: string): Promise<void> {
+  return deleteJson(`/listings/${id}`);
 }
 
 // Owner self-service withdraw (POST /listings/:id/withdraw) — archives the seller's

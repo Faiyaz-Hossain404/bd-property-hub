@@ -1,5 +1,6 @@
 import { HeaderSkeleton } from '@/components/layout/header-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PAGE_CONTAINER } from '@/lib/layout';
 
 // One placeholder property card: cover image + two text bars, matching the
 // full-bleed ListingCard footprint in the grid.
@@ -15,23 +16,24 @@ function ListingCardSkeleton() {
   );
 }
 
-// Route-level loading UI for the catalog ("Listings") page. Mirrors the 3-column
-// dashboard: filter sidebar · sort row + card grid · sticky preview rail (xl+).
+// Route-level loading UI for the catalog ("Listings") page. Mirrors the real
+// layout: fixed filter sidebar on the left, sort row + 3-column card grid on the
+// right, in the shared page container — so nothing shifts when content lands.
 export default function CatalogLoading() {
   return (
     <div role="status" aria-busy="true" className="min-h-screen bg-background">
       <HeaderSkeleton />
 
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className={`${PAGE_CONTAINER} py-10`}>
         {/* page title */}
         <div className="mb-8 space-y-2">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-80" />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-          {/* filter sidebar */}
-          <aside className="space-y-6 rounded-xl border border-border p-5">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {/* filter sidebar — same 20rem fixed column as CatalogView */}
+          <aside className="w-full space-y-6 rounded-xl border border-border p-5 lg:w-80 lg:shrink-0">
             {Array.from({ length: 3 }).map((_, groupIndex) => (
               <div key={groupIndex} className="space-y-3">
                 <Skeleton className="h-4 w-24" />
@@ -42,28 +44,17 @@ export default function CatalogLoading() {
             <Skeleton className="h-10 w-full rounded-md" />
           </aside>
 
-          {/* sort row + card grid + preview rail */}
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
-            <div>
-              <div className="mb-5 flex items-center justify-end gap-2">
-                <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-9 w-40 rounded-md" />
-              </div>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {Array.from({ length: 6 }).map((_, cardIndex) => (
-                  <ListingCardSkeleton key={cardIndex} />
-                ))}
-              </div>
+          {/* sort row + card grid */}
+          <div className="min-w-0 flex-1">
+            <div className="mb-5 flex items-center justify-end gap-2">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-9 w-40 rounded-md" />
             </div>
-
-            <aside className="hidden xl:block">
-              <div className="sticky top-24 space-y-3 rounded-xl border border-border p-4">
-                <Skeleton className="aspect-[4/3] w-full rounded-lg" />
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-10 w-full rounded-md" />
-              </div>
-            </aside>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, cardIndex) => (
+                <ListingCardSkeleton key={cardIndex} />
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { Gauge, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react"
+import { Gauge, LayoutDashboard, LoaderCircle, LogOut, ShieldCheck } from "lucide-react"
 import type { PublicUser } from "@bdph/types"
 
 import { Link } from "@/i18n/navigation"
@@ -33,7 +33,7 @@ function initials(name: string, email: string): string {
 // with the app's session model.
 export function UserMenu({ user }: { user: PublicUser }) {
   const t = useTranslations("nav")
-  const { logout } = useLogout()
+  const { logout, isPending } = useLogout()
   const staff = isStaff(user)
   const adminPrime = isAdminPrime(user)
 
@@ -72,15 +72,20 @@ export function UserMenu({ user }: { user: PublicUser }) {
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
+        {/* preventDefault keeps the menu open so the pending label stays
+            visible until the redirect unmounts it. aria-busy + the swapped
+            label announce the state to a screen reader without a live region. */}
         <DropdownMenuItem
           variant="destructive"
+          disabled={isPending}
+          aria-busy={isPending}
           onSelect={(event) => {
             event.preventDefault()
             logout()
           }}
         >
-          <LogOut />
-          {t("signOut")}
+          {isPending ? <LoaderCircle className="animate-spin" /> : <LogOut />}
+          {isPending ? t("signingOut") : t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -32,9 +32,14 @@ describe('Role capability boundaries (e2e)', () => {
     await resetData(ctx);
   });
 
-  async function draftFor(admin: Awaited<ReturnType<typeof registerUser>>): Promise<string> {
+  // Creating a draft is KYC-gated for everyone, staff included, so the actor has
+  // to be verified first — that gate has its own test below.
+  async function draftFor(actor: Awaited<ReturnType<typeof registerUser>>): Promise<string> {
     const districtId = await firstDistrictId(ctx);
-    const draft = await admin.agent
+    await ctx.connection
+      .collection('users')
+      .updateOne({ email: actor.user.email }, { $set: { kycStatus: 'verified' } });
+    const draft = await actor.agent
       .post(`${API}/listings`)
       .send({
         titleEn: 'Admin draft',
@@ -59,9 +64,26 @@ describe('Role capability boundaries (e2e)', () => {
     expect((res.body.data as PublicUser).role).toBe('seller');
   });
 
-  it('lets an admin create a draft through inherited seller capability', async () => {
+  it('does NOT let inherited seller capability bypass the KYC gate on create', async () => {
+    // Inheritance gets an admin PAST the @Roles('seller') gate on POST /listings,
+    // but not past the verification gate behind it — same no-carve-out rule the
+    // submit gate has always had. A fresh admin's kycStatus is 'unverified'.
     const admin = await registerUser(ctx, ['admin']);
-    await draftFor(admin); // 201 asserted inside
+    const districtId = await firstDistrictId(ctx);
+    const body = {
+      titleEn: 'Admin draft',
+      assetType: 'apartment',
+      transactionType: 'sale',
+      location: { districtId },
+    };
+
+    await admin.agent.post(`${API}/listings`).send(body).expect(403);
+
+    // Verified, the same admin creates the draft its seller capability allows.
+    await ctx.connection
+      .collection('users')
+      .updateOne({ email: admin.user.email }, { $set: { kycStatus: 'verified' } });
+    await admin.agent.post(`${API}/listings`).send(body).expect(201);
   });
 
   it('does NOT let an admin withdraw another seller’s listing (ownership still enforced)', async () => {
@@ -75,9 +97,15 @@ describe('Role capability boundaries (e2e)', () => {
   });
 
   it('does NOT let inherited seller capability bypass the KYC gate on submit', async () => {
-    // A fresh admin's kycStatus defaults to 'unverified'.
     const admin = await registerUser(ctx, ['admin']);
+    // draftFor verifies the actor so the CREATE gate lets the draft exist; drop
+    // verification again so what this test exercises is the SUBMIT gate on its
+    // own, rather than passing only because creation was already blocked.
     const listingId = await draftFor(admin);
+    await ctx.connection
+      .collection('users')
+      .updateOne({ email: admin.user.email }, { $set: { kycStatus: 'unverified' } });
+
     await admin.agent.post(`${API}/listings/${listingId}/submit`).send({}).expect(403);
   });
 });

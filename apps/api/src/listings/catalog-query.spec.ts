@@ -1,4 +1,9 @@
-import { publicListingQuerySchema, PUBLIC_LISTING_PAGE_SIZE } from '@bdph/types';
+import {
+  ASSET_TYPES,
+  LISTING_SORTS,
+  publicListingQuerySchema,
+  PUBLIC_LISTING_PAGE_SIZE,
+} from '@bdph/types';
 
 // Pure boundary-contract guards for the public catalog query (DISC-3 + DISC-7).
 // No DB: these pin what GET /listings accepts before the service runs the keyset
@@ -21,6 +26,16 @@ describe('public catalog query contract', () => {
 
   it('rejects a malformed district_id', () => {
     expect(() => publicListingQuerySchema.parse({ district_id: 'dhaka' })).toThrow();
+  });
+
+  // 'office' is the newest asset type; this pins that the facet accepts it, and
+  // that the enum is still closed to anything outside ASSET_TYPES.
+  it('accepts every asset type as a facet, and nothing else', () => {
+    for (const assetType of ASSET_TYPES) {
+      expect(publicListingQuerySchema.parse({ asset_type: assetType }).asset_type).toBe(assetType);
+    }
+    expect(ASSET_TYPES).toContain('office');
+    expect(() => publicListingQuerySchema.parse({ asset_type: 'penthouse' })).toThrow();
   });
 
   it('coerces limit from a query string', () => {
@@ -80,6 +95,20 @@ describe('public catalog query contract', () => {
   it('accepts the price sort orders', () => {
     expect(publicListingQuerySchema.parse({ sort: 'price_asc' }).sort).toBe('price_asc');
     expect(publicListingQuerySchema.parse({ sort: 'price_desc' }).sort).toBe('price_desc');
+  });
+
+  // The title orders are the newest addition, and the catalog reads its sort
+  // dropdown straight off LISTING_SORTS — so anything the dropdown can offer has
+  // to survive this schema, or picking it would 400.
+  it('accepts the title sort orders', () => {
+    expect(publicListingQuerySchema.parse({ sort: 'title_asc' }).sort).toBe('title_asc');
+    expect(publicListingQuerySchema.parse({ sort: 'title_desc' }).sort).toBe('title_desc');
+  });
+
+  it('accepts every offered sort order, and nothing else', () => {
+    for (const sort of LISTING_SORTS) {
+      expect(publicListingQuerySchema.parse({ sort }).sort).toBe(sort);
+    }
   });
 
   it('rejects an unknown sort', () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, type FormEvent } from "react"
+import { useEffect, useState, useTransition, type FormEvent, type RefObject } from "react"
 import { useTranslations } from "next-intl"
 import { LoaderCircle } from "lucide-react"
 
@@ -14,8 +14,8 @@ import {
 } from "@bdph/types"
 import { ApiError, updateListing } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { NumericInput } from "@/components/ui/numeric-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const TEXTAREA_CLASS =
@@ -31,10 +31,15 @@ const UNSET = "__unset__"
 
 type EditorT = ReturnType<typeof useTranslations>
 
+export type ListingDetailsSave = () => Promise<PublicListing>
+
 type Props = {
   listing: PublicListing
   onUpdated: (listing: PublicListing) => void
   t: EditorT
+  // Same arrangement as ListingEditor: these fields live in local state, so the
+  // Submit button needs a handle to flush them before it submits.
+  saveRef?: RefObject<ListingDetailsSave | null>
 }
 
 // An empty field leaves the stored value unchanged: the API merges attributes
@@ -50,7 +55,7 @@ function toOptionalNumber(value: string): number | undefined {
 // Sellers fill these in after creating a draft; persists via PATCH /listings/:id
 // and hands the refreshed listing back to the parent. A separate card from the
 // location & price editor so each stays focused.
-export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
+export function ListingDetailsEditor({ listing, onUpdated, t, saveRef }: Props) {
   const a = listing.attributes
 
   const [rooms, setRooms] = useState(a.rooms != null ? String(a.rooms) : "")
@@ -73,22 +78,26 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
     setIsSaved(false)
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  // Single write path, mirroring ListingEditor: failures land inline AND throw
+  // the same text so the Submit flow can toast the exact reason.
+  const save: ListingDetailsSave = async () => {
     setFormError(null)
     setIsSaved(false)
+
+    function fail(message: string): never {
+      setFormError(message)
+      throw new Error(message)
+    }
 
     const counts = [rooms, washrooms]
     const sizes = [areaSqft, landSizeValue]
     const hasBadCount = counts.some((value) => value.trim() && !WHOLE_NUMBER.test(value.trim()))
     const hasBadSize = sizes.some((value) => value.trim() && !DECIMAL_NUMBER.test(value.trim()))
     if (hasBadCount) {
-      setFormError(t("countInvalid"))
-      return
+      fail(t("countInvalid"))
     }
     if (hasBadSize) {
-      setFormError(t("sizeInvalid"))
-      return
+      fail(t("sizeInvalid"))
     }
 
     const hasLandSize = landSizeValue.trim().length > 0
@@ -108,14 +117,31 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
       descriptionBn: descriptionBn.trim(),
     }
 
+    try {
+      const updated = await updateListing(listing.id, input)
+      onUpdated(updated)
+      setIsSaved(true)
+      return updated
+    } catch (error) {
+      fail(error instanceof ApiError ? error.message : t("saveError"))
+    }
+  }
+
+  // No dependency array: `save` closes over this render's field values, so the
+  // ref must be refreshed every render.
+  useEffect(() => {
+    if (!saveRef) return
+    saveRef.current = save
+    return () => {
+      saveRef.current = null
+    }
+  })
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     startTransition(async () => {
-      try {
-        const updated = await updateListing(listing.id, input)
-        onUpdated(updated)
-        setIsSaved(true)
-      } catch (error) {
-        setFormError(error instanceof ApiError ? error.message : t("saveError"))
-      }
+      // save() has already surfaced the reason inline.
+      await save().catch(() => {})
     })
   }
 
@@ -126,12 +152,11 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor={`rooms-${listing.id}`}>{t("roomsLabel")}</Label>
-          <Input
+          <NumericInput
             id={`rooms-${listing.id}`}
-            inputMode="numeric"
             value={rooms}
-            onChange={(event) => {
-              setRooms(event.target.value)
+            onValueChange={(next) => {
+              setRooms(next)
               markDirty()
             }}
           />
@@ -139,12 +164,11 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`washrooms-${listing.id}`}>{t("washroomsLabel")}</Label>
-          <Input
+          <NumericInput
             id={`washrooms-${listing.id}`}
-            inputMode="numeric"
             value={washrooms}
-            onChange={(event) => {
-              setWashrooms(event.target.value)
+            onValueChange={(next) => {
+              setWashrooms(next)
               markDirty()
             }}
           />
@@ -152,12 +176,13 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`area-${listing.id}`}>{t("areaSqftLabel")}</Label>
-          <Input
+          {/* Decimal-capable: areaSqft is z.number().nonnegative(), not .int(). */}
+          <NumericInput
             id={`area-${listing.id}`}
-            inputMode="decimal"
+            allowDecimal
             value={areaSqft}
-            onChange={(event) => {
-              setAreaSqft(event.target.value)
+            onValueChange={(next) => {
+              setAreaSqft(next)
               markDirty()
             }}
           />
@@ -188,12 +213,14 @@ export function ListingDetailsEditor({ listing, onUpdated, t }: Props) {
 
         <div className="grid gap-1.5">
           <Label htmlFor={`landSize-${listing.id}`}>{t("landSizeLabel")}</Label>
-          <Input
+          {/* Decimal-capable for the same reason as area, and because a plot is
+              routinely described as e.g. 2.5 katha. */}
+          <NumericInput
             id={`landSize-${listing.id}`}
-            inputMode="decimal"
+            allowDecimal
             value={landSizeValue}
-            onChange={(event) => {
-              setLandSizeValue(event.target.value)
+            onValueChange={(next) => {
+              setLandSizeValue(next)
               markDirty()
             }}
           />
