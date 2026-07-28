@@ -117,9 +117,19 @@ export class AuthController {
     return user;
   }
 
+  // Public and idempotent on purpose. Behind SessionAuthGuard this 401'd before
+  // the handler body ran whenever the session no longer resolved — already
+  // revoked by a password reset or an admin suspend, or simply expired — so
+  // res.clearCookie() never executed and the browser kept a dead bdph_session
+  // cookie. Signing out has to clear the cookie in exactly those states.
+  //
+  // Safe unauthenticated: revocation needs the raw token from the cookie, so a
+  // caller without it revokes nothing, and the cookie is SameSite=Lax, which
+  // keeps a cross-site POST from carrying it. Still throttled, like the other
+  // credential routes.
   @Post('logout')
   @HttpCode(200)
-  @UseGuards(SessionAuthGuard)
+  @Throttle(AUTH_THROTTLE)
   async logout(
     @Req() req: Request & { cookies?: Record<string, string> },
     @Res({ passthrough: true }) res: Response,

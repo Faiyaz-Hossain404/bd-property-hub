@@ -1,12 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
+import { useSearchParams } from "next/navigation"
 import { LoaderCircle } from "lucide-react"
+import type { PublicUser } from "@bdph/types"
 
 import { useRouter } from "@/i18n/navigation"
 import { bridgeClerkSession } from "@/lib/api"
+import { postAuthPath } from "@/lib/roles"
+import { RoleChoice } from "./role-choice"
+
+// ClerkProvider sends sign-UP here with ?welcome=1 and sign-IN without it. That
+// flag is the only thing distinguishing the two, and it decides nothing but
+// whether to ask the role question — a returning user who forged it still gets
+// the prompt gated on their actual role below, and the answer still goes
+// through the server-side promotion endpoint.
+const WELCOME_PARAM = "welcome"
 
 // A delay that resolves immediately if the signal aborts and never leaves a timer
 // running past the effect's lifetime.
@@ -45,8 +56,24 @@ export function SessionBridge() {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations("auth")
+  const searchParams = useSearchParams()
   const [failed, setFailed] = useState(false)
   const [recovering, setRecovering] = useState(false)
+  // Set only when the freshly bridged account should be asked to pick a role;
+  // otherwise the effect navigates and this component never renders a choice.
+  const [choosingRole, setChoosingRole] = useState(false)
+
+  const isWelcome = searchParams.get(WELCOME_PARAM) === "1"
+
+  // Sends the user to the surface their role belongs to: sellers (and admins,
+  // by capability inheritance) to the dashboard, everyone else to the catalog.
+  const goToApp = useCallback(
+    (user: PublicUser | null) => {
+      router.replace(postAuthPath(user))
+      router.refresh()
+    },
+    [router],
+  )
 
   // Return to sign-in, but clear the Clerk session first. After a failed bridge the
   // Clerk session is still active, so navigating straight to /login would make
@@ -79,10 +106,17 @@ export function SessionBridge() {
         if (signal.aborted) return
         if (token) {
           try {
-            await bridgeClerkSession(token, signal)
+            const user = await bridgeClerkSession(token, signal)
             if (signal.aborted) return
-            router.replace("/dashboard")
-            router.refresh()
+            // Ask only a brand-new account that still holds the default buyer
+            // role. An existing seller or a staff account is routed straight
+            // through, so the prompt can never overwrite a role they already
+            // have — and re-signing in never asks again.
+            if (isWelcome && user.role === "buyer") {
+              setChoosingRole(true)
+              return
+            }
+            goToApp(user)
           } catch {
             if (!signal.aborted) setFailed(true)
           }
@@ -100,7 +134,20 @@ export function SessionBridge() {
     return () => {
       controller.abort()
     }
-  }, [getToken, router])
+  }, [getToken, router, isWelcome, goToApp])
+
+  // The role step owns the page once the session exists — the account is already
+  // usable at this point, so this is a routing question, not a second auth gate.
+  if (choosingRole) {
+    return (
+      <RoleChoice
+        onChosen={(choice) => {
+          router.replace(choice === "seller" ? "/dashboard" : "/catalog")
+          router.refresh()
+        }}
+      />
+    )
+  }
 
   // One persistent live region for both states, so a screen reader announces the
   // switch from "signing in" to the error (a status message per WCAG 4.1.3).
