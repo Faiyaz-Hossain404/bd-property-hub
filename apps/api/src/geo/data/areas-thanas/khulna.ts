@@ -305,7 +305,7 @@ export const KHULNA_AREAS: readonly AreaSeed[] = [
   { code: 'jhenaidah-moheshpur-natima', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Natima', nameBn: 'নাটিমা' },
   { code: 'jhenaidah-moheshpur-nepa', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Nepa', nameBn: 'নেপা' },
   { code: 'jhenaidah-moheshpur-panthapara', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Panthapara', nameBn: 'পান্থপাড়া' },
-  { code: 'jhenaidah-moheshpur-sbk', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Sbk', nameBn: 'এস, বি, কে' },
+  { code: 'jhenaidah-moheshpur-sbk', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Sbk', nameBn: 'এস.বি.কে' },
   { code: 'jhenaidah-moheshpur-shyamkur', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Shyamkur', nameBn: 'শ্যামকুড়' },
   { code: 'jhenaidah-moheshpur-swaruppur', upazilaCode: 'jhenaidah-moheshpur', nameEn: 'Swaruppur', nameBn: 'স্বরুপপুর' },
 
