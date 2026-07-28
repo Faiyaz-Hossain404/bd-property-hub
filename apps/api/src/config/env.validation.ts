@@ -13,6 +13,17 @@ const envSchema = z
     CORS_ORIGINS: z.string().default(''),
     MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
     MONGODB_DB_NAME: z.string().default('bdph'),
+    // Boot-time connection resilience: the API container usually starts before
+    // the database is accepting connections, so the first connect is retried
+    // with exponential backoff instead of crash-looping. Worst case with the
+    // defaults is roughly 40s of waiting before boot gives up.
+    MONGO_CONNECT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(6),
+    MONGO_CONNECT_BASE_DELAY_MS: z.coerce.number().int().positive().default(500),
+    MONGO_CONNECT_MAX_DELAY_MS: z.coerce.number().int().positive().default(10_000),
+    // How long any single operation waits for a healthy server before failing.
+    // The driver default is 30s, long enough for requests to pile up behind a
+    // brief outage; 10s fails a request while the client is still listening.
+    MONGO_SERVER_SELECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
     // Express `trust proxy` setting, so req.ip reflects the real client (not the
     // load balancer) for IP rate limiting. Leave unset for direct exposure / local
@@ -24,6 +35,14 @@ const envSchema = z
     // Sensitive auth routes get a tighter limit of their own (see AuthController).
     THROTTLE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),
+    // FR-S8: a listing cannot be submitted for review until its owner is
+    // KYC-verified. Defaults ON — the requirement stands unless someone
+    // deliberately opts out, and only 'false' opts out. Exists so the gate can be
+    // lifted for a test environment without deleting the rule or its e2e cover.
+    REQUIRE_SELLER_VERIFICATION: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
     // Optional: listing photo uploads are disabled (routes 503) until this is set.
     // Form: cloudinary://<api_key>:<api_secret>@<cloud_name>
     CLOUDINARY_URL: z.string().optional(),
