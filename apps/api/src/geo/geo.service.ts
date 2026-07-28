@@ -16,7 +16,7 @@ import { AreaThana, AreaThanaDocument } from './schemas/area-thana.schema';
 import { CityCorporation, CityCorporationDocument } from './schemas/city-corporation.schema';
 import { DIVISION_SEED } from './data/divisions';
 import { DISTRICT_SEED } from './data/districts';
-import { UPAZILA_SEED } from './data/cities-upazilas';
+import { CITY_UPAZILA_SEED } from './data/cities-upazilas-all';
 import { AREA_SEED } from './data/areas-thanas';
 import { CITY_CORPORATION_SEED } from './data/city-corporations';
 
@@ -213,7 +213,7 @@ export class GeoService {
     }
     const districtIdByCode = this.codeToId(await this.districtModel.find().exec());
 
-    for (const upazila of UPAZILA_SEED) {
+    for (const upazila of CITY_UPAZILA_SEED) {
       const districtId = this.requireParent(districtIdByCode, upazila.districtCode, upazila.code, 'district');
       await this.cityUpazilaModel.updateOne(
         { code: upazila.code },
@@ -264,7 +264,7 @@ export class GeoService {
     return {
       divisions: DIVISION_SEED.length,
       districts: DISTRICT_SEED.length,
-      citiesUpazilas: UPAZILA_SEED.length,
+      citiesUpazilas: CITY_UPAZILA_SEED.length,
       areasThanas: AREA_SEED.length,
       cityCorporations: CITY_CORPORATION_SEED.length,
     };

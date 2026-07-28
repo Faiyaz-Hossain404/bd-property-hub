@@ -843,7 +843,7 @@ export const CHATTOGRAM_AREAS: readonly AreaSeed[] = [
   { code: 'feni-fulgazi-anandopur', upazilaCode: 'feni-fulgazi', nameEn: 'Anandopur', nameBn: 'আনন্দপুর' },
   { code: 'feni-fulgazi-dorbarpur', upazilaCode: 'feni-fulgazi', nameEn: 'Dorbarpur', nameBn: 'দরবারপুর' },
   { code: 'feni-fulgazi-fulgazi', upazilaCode: 'feni-fulgazi', nameEn: 'Fulgazi', nameBn: 'ফুলগাজী' },
-  { code: 'feni-fulgazi-gmhat', upazilaCode: 'feni-fulgazi', nameEn: 'Gmhat', nameBn: 'জি,এম, হাট' },
+  { code: 'feni-fulgazi-gmhat', upazilaCode: 'feni-fulgazi', nameEn: 'Gmhat', nameBn: 'জি.এম. হাট' },
   { code: 'feni-fulgazi-munshirhat', upazilaCode: 'feni-fulgazi', nameEn: 'Munshirhat', nameBn: 'মুন্সিরহাট' },
 
   // feni-parshuram

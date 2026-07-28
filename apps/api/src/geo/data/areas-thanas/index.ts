@@ -1,6 +1,11 @@
-// Flat nationwide areas/thanas (union) seed, concatenated from the per-division
-// files. This is what GeoService.seed consumes. Generated — do not hand-edit.
+// Flat nationwide areas/thanas seed. This is what GeoService.seed consumes.
+//
+// Two sources, deliberately kept apart: the per-division files below are the
+// generated rural unions (do not hand-edit those), and METRO_THANA_SEED adds the
+// metropolitan police thanas the generated dataset has no concept of — see
+// ../metro.ts.
 import type { AreaSeed } from './area-seed';
+import { METRO_THANA_SEED } from '../metro';
 import { DHAKA_AREAS } from './dhaka';
 import { CHATTOGRAM_AREAS } from './chattogram';
 import { RAJSHAHI_AREAS } from './rajshahi';
@@ -21,4 +26,5 @@ export const AREA_SEED: readonly AreaSeed[] = [
   ...SYLHET_AREAS,
   ...RANGPUR_AREAS,
   ...MYMENSINGH_AREAS,
+  ...METRO_THANA_SEED,
 ];

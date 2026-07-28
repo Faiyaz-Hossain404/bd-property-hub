@@ -6,7 +6,9 @@ import {
 import { DIVISION_SEED } from './data/divisions';
 import { DISTRICT_SEED } from './data/districts';
 import { UPAZILA_SEED } from './data/cities-upazilas';
+import { CITY_UPAZILA_SEED } from './data/cities-upazilas-all';
 import { AREA_SEED } from './data/areas-thanas';
+import { METRO_CITY_SEED, METRO_THANA_SEED } from './data/metro';
 import { CITY_CORPORATION_SEED } from './data/city-corporations';
 
 // Pure data-integrity guards for the geo seed (no DB needed). These catch the
@@ -62,41 +64,65 @@ describe('geo seed data', () => {
   });
 
   describe('cities/upazilas', () => {
-    // Dataset-derived count (open nuhil/bangladesh-geocode). Asserted so a
-    // regeneration or hand-edit that drops/duplicates rows fails loudly; update this
-    // number deliberately when the source is intentionally refreshed.
+    // 494 generated rural upazilas (open nuhil/bangladesh-geocode) + 11 metropolitan
+    // city rows. Asserted so a regeneration or hand-edit that drops/duplicates rows
+    // fails loudly; update deliberately when a source is intentionally refreshed.
     it('contains the expected number of cities/upazilas', () => {
       expect(UPAZILA_SEED).toHaveLength(494);
+      expect(METRO_CITY_SEED).toHaveLength(11);
+      expect(CITY_UPAZILA_SEED).toHaveLength(505);
     });
 
     it('has unique codes', () => {
-      const codes = UPAZILA_SEED.map((row) => row.code);
+      const codes = CITY_UPAZILA_SEED.map((row) => row.code);
       expect(new Set(codes).size).toBe(codes.length);
     });
 
     it('references only known districts', () => {
       const districtCodes = new Set(DISTRICT_SEED.map((district) => district.code));
-      for (const row of UPAZILA_SEED) {
+      for (const row of CITY_UPAZILA_SEED) {
         expect(districtCodes.has(row.districtCode)).toBe(true);
       }
     });
 
     it('covers all 64 districts', () => {
-      const covered = new Set(UPAZILA_SEED.map((row) => row.districtCode));
+      const covered = new Set(CITY_UPAZILA_SEED.map((row) => row.districtCode));
       expect(covered.size).toBe(DISTRICT_SEED.length);
     });
 
     it('has non-empty EN and BN names for every row', () => {
-      for (const row of UPAZILA_SEED) {
+      for (const row of CITY_UPAZILA_SEED) {
         expect(row.nameEn.trim().length).toBeGreaterThan(0);
         expect(row.nameBn.trim().length).toBeGreaterThan(0);
+      }
+    });
+
+    // The reported bug: Dhaka district offered only its five rural upazilas, so a
+    // flat in Badda could not be filed under anything more precise than "Dhaka".
+    it('offers the city itself under each metropolitan district', () => {
+      for (const city of METRO_CITY_SEED) {
+        const forDistrict = CITY_UPAZILA_SEED.filter((row) => row.districtCode === city.districtCode);
+        expect(forDistrict.map((row) => row.nameEn)).toContain(city.nameEn);
+      }
+      const dhaka = CITY_UPAZILA_SEED.filter((row) => row.districtCode === 'dhaka');
+      expect(dhaka.map((row) => row.nameEn)).toContain('Dhaka');
+    });
+
+    // The metro rows are additive. A metro city must never repeat a rural upazila
+    // name inside the same district, or the picker shows the same place twice.
+    it('does not duplicate an existing upazila name within a district', () => {
+      for (const city of METRO_CITY_SEED) {
+        const rural = UPAZILA_SEED.filter((row) => row.districtCode === city.districtCode);
+        expect(rural.map((row) => row.nameEn)).not.toContain(city.nameEn);
       }
     });
   });
 
   describe('areas/thanas', () => {
+    // 4540 generated rural unions + 113 metropolitan police thanas.
     it('contains the expected number of areas/thanas', () => {
-      expect(AREA_SEED).toHaveLength(4540);
+      expect(METRO_THANA_SEED).toHaveLength(113);
+      expect(AREA_SEED).toHaveLength(4653);
     });
 
     it('has unique codes', () => {
@@ -105,9 +131,29 @@ describe('geo seed data', () => {
     });
 
     it('references only known cities/upazilas', () => {
-      const upazilaCodes = new Set(UPAZILA_SEED.map((row) => row.code));
+      const upazilaCodes = new Set(CITY_UPAZILA_SEED.map((row) => row.code));
       for (const row of AREA_SEED) {
         expect(upazilaCodes.has(row.upazilaCode)).toBe(true);
+      }
+    });
+
+    // Dhaka Metropolitan Police has exactly 50 thanas; the count landing on 50 after
+    // filtering out rows that duplicate a rural upazila is the check that the
+    // filtering kept the right set rather than merely a plausible-looking one.
+    it('gives Dhaka city all 50 of its metropolitan thanas', () => {
+      const dmp = METRO_THANA_SEED.filter((row) => row.upazilaCode === 'dhaka-city');
+      expect(dmp).toHaveLength(50);
+      for (const name of ['Badda', 'Gulshan', 'Dhanmondi', 'Mirpur Model', 'Uttara East', 'Motijheel']) {
+        expect(dmp.map((row) => row.nameEn)).toContain(name);
+      }
+    });
+
+    // A comma inside a name would be read as a separator by the location label,
+    // which joins the chain as "area, upazila, district".
+    it('has no comma in any area name', () => {
+      for (const row of AREA_SEED) {
+        expect(row.nameEn).not.toContain(',');
+        expect(row.nameBn).not.toContain(',');
       }
     });
 
