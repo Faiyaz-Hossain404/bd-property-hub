@@ -583,7 +583,8 @@
         "land": "জমি",
         "building": "ভবন",
         "warehouse": "গুদাম",
-        "factory": "কারখানা"
+        "factory": "কারখানা",
+        "office": "অফিস"
       },
       "transactionType": {
         "sale": "বিক্রয়",

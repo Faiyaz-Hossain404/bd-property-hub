@@ -113,11 +113,29 @@ export function OverviewPanel() {
     [format],
   )
 
+  // Bucket keys are whatever the API grouped by, so this catalog can fall behind
+  // the server's enums — which is exactly what happened when `office` joined
+  // ASSET_TYPES and only this breakdown was missed. `t()` on a missing key logs
+  // MISSING_MESSAGE and renders the key PATH ("admin.breakdown.assetType.office")
+  // as the label, so one late enum value turns a whole chart into an error and
+  // a slice nobody can read.
+  //
+  // t.has() resolves without notifying, so the slice still renders with its raw
+  // key and still carries its real count. It swallows the miss silently though,
+  // which is the one thing worse than the loud version — hence the warn: a
+  // missing label should still be findable, just not at the cost of the page.
   const labelBuckets = (
     kind: string,
     buckets: { key: string; count: number }[],
   ): CategoryDatum[] =>
-    buckets.map((b) => ({ label: t(`breakdown.${kind}.${b.key}`), count: b.count }))
+    buckets.map((b) => {
+      const path = `breakdown.${kind}.${b.key}`
+      if (t.has(path)) return { label: t(path), count: b.count }
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`Admin overview: no translation for admin.${path}; showing the raw key.`)
+      }
+      return { label: b.key, count: b.count }
+    })
 
   if (state.status === "loading") {
     return (

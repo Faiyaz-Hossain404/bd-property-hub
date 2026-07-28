@@ -583,7 +583,8 @@
         "land": "Land",
         "building": "Building",
         "warehouse": "Warehouse",
-        "factory": "Factory"
+        "factory": "Factory",
+        "office": "Office"
       },
       "transactionType": {
         "sale": "Sale",
