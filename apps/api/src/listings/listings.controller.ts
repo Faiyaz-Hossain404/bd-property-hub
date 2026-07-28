@@ -1,4 +1,15 @@
-import { Body, Controller, ForbiddenException, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   createListingInputSchema,
   updateListingInputSchema,
@@ -50,6 +61,20 @@ export class ListingsController {
   ): Promise<PublicListing> {
     const listing = await this.listings.update(user.id, id, body);
     return this.listings.toPublic(listing, { forOwnerOrStaff: true });
+  }
+
+  // Owner self-service delete of a never-submitted draft. Same shape as update()
+  // above: deleteDraft() checks ownership against the caller's own id, so
+  // ownership is the real protection and the role gate only decides who may hold
+  // drafts at all. Staff get a 403 on someone else's draft — a staff-initiated
+  // removal of another seller's listing is the moderation takedown, not this.
+  // 204, no body: there is nothing left to return.
+  @Delete('listings/:id')
+  @HttpCode(204)
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('seller', 'admin', 'admin_prime')
+  async remove(@Param('id') id: string, @CurrentUser() user: PublicUser): Promise<void> {
+    await this.listings.deleteDraft(user.id, id);
   }
 
   @Post('listings/:id/submit')

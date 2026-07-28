@@ -34,8 +34,9 @@ export function SellerVerificationSection({ user, onUserRefresh }: Props) {
 
   const canRequest = status === "unverified" || status === "rejected"
 
+  // Width and vertical rhythm come from the dashboard's column grid.
   return (
-    <div className="mt-10 max-w-2xl">
+    <div>
       <h2 className="font-heading text-xl font-semibold text-foreground">{t("sectionTitle")}</h2>
       <Card className="mt-4 gap-0 p-0">
         <CardHeader className="border-b px-6 py-5">

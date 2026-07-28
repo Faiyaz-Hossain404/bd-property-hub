@@ -12,6 +12,18 @@ const intlMiddleware = createMiddleware(routing);
 export default clerkMiddleware((auth, req) => intlMiddleware(req));
 
 export const config = {
-  // Run on everything except API routes, Next internals, and static files.
-  matcher: ['/', '/(en|bn)/:path*', '/((?!api|_next|_vercel|.*\\..*).*)'],
+  // Pages only. Matchers are OR'd, so each one has to exclude non-page requests
+  // on its own — the third pattern's exclusions do nothing for a path the second
+  // one already matched.
+  //
+  //   '/'                      the root, which redirects to a locale
+  //   '/(en|bn)/((?!.*\\..*).*)'  locale-prefixed pages, minus anything with a
+  //                            dot in it. Without that inner lookahead this
+  //                            pattern re-admits every static file requested
+  //                            under a locale prefix (/en/logo.png), and both
+  //                            Clerk and next-intl would run for an image.
+  //   '/((?!api|_next|...))'   everything else that isn't an API route, a Next
+  //                            internal (_next/static, _next/image), a Vercel
+  //                            internal, or a file with an extension.
+  matcher: ['/', '/(en|bn)/((?!.*\\..*).*)', '/((?!api|_next|_vercel|.*\\..*).*)'],
 };

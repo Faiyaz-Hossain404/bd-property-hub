@@ -40,8 +40,10 @@ export function SavedSection() {
     setListings((prev) => prev?.filter((listing) => listing.id !== id) ?? null)
   }
 
+  // Width and vertical rhythm come from the dashboard's column grid, so this
+  // section just fills whatever column it is placed in.
   return (
-    <div className="mt-10 max-w-2xl">
+    <div>
       <h2 className="font-heading text-xl font-semibold text-foreground">{t("sectionTitle")}</h2>
       <Card className="mt-4 gap-0 p-0">
         <CardHeader className="border-b px-6 py-5">
