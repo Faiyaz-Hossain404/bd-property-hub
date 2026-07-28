@@ -157,6 +157,40 @@ describe('geo seed data', () => {
       }
     });
 
+    // Regression pin. The source dataset ships English and Bangla as two separate
+    // files, each sorted by its own name, so pairing them by array index is only
+    // ever right by luck. It was wrong here: Bangla collation puts ভাটারা before
+    // উত্তরা while English puts "Vatara" after "Uttara", so these three rows ended
+    // up carrying each other's Bangla names and shipped to production that way.
+    // Every other check passed at the time — the names were non-empty, unique and
+    // comma-free — because none of them asked whether a name belongs to ITS OWN
+    // row. This does.
+    it('pairs each Bangla name with its own English row', () => {
+      const expected: Record<string, string> = {
+        'dhaka-city-uttara-east': 'উত্তরা পূর্ব',
+        'dhaka-city-uttara-west': 'উত্তরা পশ্চিম',
+        'dhaka-city-vatara': 'ভাটারা',
+        'dhaka-city-badda': 'বাড্ডা',
+        'dhaka-city-gulshan': 'গুলশান',
+        'dhaka-city-dhanmondi': 'ধানমন্ডি',
+        'dhaka-city-uttar-khan': 'উত্তর খান',
+        'dhaka-city-wari': 'ওয়ারী',
+      };
+      const byCode = new Map(METRO_THANA_SEED.map((row) => [row.code, row.nameBn]));
+      for (const [code, nameBn] of Object.entries(expected)) {
+        expect(byCode.get(code)).toBe(nameBn);
+      }
+    });
+
+    // "থানা" means thana. A name like "রাজপাড়া থানা" restates the tier it already
+    // sits in, and only Rajshahi's rows arrived that way — so the Bangla picker
+    // read inconsistently against every other city.
+    it('does not restate the word thana inside a Bangla area name', () => {
+      for (const row of METRO_THANA_SEED) {
+        expect(row.nameBn).not.toContain('থানা');
+      }
+    });
+
     it('has non-empty EN and BN names for every row', () => {
       for (const row of AREA_SEED) {
         expect(row.nameEn.trim().length).toBeGreaterThan(0);

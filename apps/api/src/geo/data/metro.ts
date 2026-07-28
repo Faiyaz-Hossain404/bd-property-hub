@@ -16,6 +16,16 @@
 // when it duplicates an upazila we already seed (Levenshtein <=1 on the squashed
 // name, which catches transliteration drift like Taragonj/Taraganj) or when it is
 // listed in the exclusions in the generator. Counts are asserted in geo.data.spec.ts.
+//
+// REGENERATING THIS FILE: do NOT pair the source's English and Bangla rows by
+// array index. They are two separate files, each sorted by its OWN name -- English
+// alphabetically, Bangla in Bangla collation -- so the orders agree only by
+// coincidence. Equal row counts do NOT mean equal ordering. That assumption
+// already shipped one bug: Bangla collation puts ভাটারা before উত্তরা while
+// English puts "Vatara" after "Uttara", which silently rotated the Bangla names
+// across Uttara East / Uttara West / Vatara. Pair by name, or verify every pair
+// by transliteration afterwards. The pairing for those three is pinned in
+// geo.data.spec.ts so the same rotation cannot come back unnoticed.
 import type { UpazilaSeed } from './cities-upazilas';
 import type { AreaSeed } from './areas-thanas/area-seed';
 
@@ -84,9 +94,9 @@ export const METRO_THANA_SEED: readonly AreaSeed[] = [
   { code: 'dhaka-city-tejgaon-industrial', upazilaCode: 'dhaka-city', nameEn: 'Tejgaon Industrial', nameBn: 'তেজগাঁও শিল্পাঞ্চল' },
   { code: 'dhaka-city-turag', upazilaCode: 'dhaka-city', nameEn: 'Turag', nameBn: 'তুরাগ' },
   { code: 'dhaka-city-uttar-khan', upazilaCode: 'dhaka-city', nameEn: 'Uttar Khan', nameBn: 'উত্তর খান' },
-  { code: 'dhaka-city-uttara-east', upazilaCode: 'dhaka-city', nameEn: 'Uttara East', nameBn: 'ভাটারা' },
-  { code: 'dhaka-city-uttara-west', upazilaCode: 'dhaka-city', nameEn: 'Uttara West', nameBn: 'উত্তরা পূর্ব' },
-  { code: 'dhaka-city-vatara', upazilaCode: 'dhaka-city', nameEn: 'Vatara', nameBn: 'উত্তরা পশ্চিম' },
+  { code: 'dhaka-city-uttara-east', upazilaCode: 'dhaka-city', nameEn: 'Uttara East', nameBn: 'উত্তরা পূর্ব' },
+  { code: 'dhaka-city-uttara-west', upazilaCode: 'dhaka-city', nameEn: 'Uttara West', nameBn: 'উত্তরা পশ্চিম' },
+  { code: 'dhaka-city-vatara', upazilaCode: 'dhaka-city', nameEn: 'Vatara', nameBn: 'ভাটারা' },
   { code: 'dhaka-city-wari', upazilaCode: 'dhaka-city', nameEn: 'Wari', nameBn: 'ওয়ারী' },
   // chattogram-city
   { code: 'chattogram-city-akbarshah', upazilaCode: 'chattogram-city', nameEn: 'Akbarshah', nameBn: 'আকবরশাহ' },
@@ -114,17 +124,17 @@ export const METRO_THANA_SEED: readonly AreaSeed[] = [
   { code: 'khulna-city-harintana', upazilaCode: 'khulna-city', nameEn: 'Harintana', nameBn: 'হরিনতানা' },
   { code: 'khulna-city-aranghata', upazilaCode: 'khulna-city', nameEn: 'Aranghata', nameBn: 'আরঙ্ঘাটা' },
   // rajshahi-city
-  { code: 'rajshahi-city-boalia-model', upazilaCode: 'rajshahi-city', nameEn: 'Boalia Model', nameBn: 'বোয়ালিয়া মডেল থানা' },
-  { code: 'rajshahi-city-rajpara', upazilaCode: 'rajshahi-city', nameEn: 'Rajpara', nameBn: 'রাজপাড়া থানা' },
-  { code: 'rajshahi-city-motihar', upazilaCode: 'rajshahi-city', nameEn: 'Motihar', nameBn: 'মতিহার থানা' },
-  { code: 'rajshahi-city-shah-makhdum', upazilaCode: 'rajshahi-city', nameEn: 'Shah Makhdum', nameBn: 'শাহ মখদুম থানা' },
-  { code: 'rajshahi-city-chandrima', upazilaCode: 'rajshahi-city', nameEn: 'Chandrima', nameBn: 'চন্দ্রীমা থানা' },
-  { code: 'rajshahi-city-kashiadanga', upazilaCode: 'rajshahi-city', nameEn: 'Kashiadanga', nameBn: 'কাশিয়াডাঙ্গা থানা' },
-  { code: 'rajshahi-city-katakhali', upazilaCode: 'rajshahi-city', nameEn: 'Katakhali', nameBn: 'কাটাখালী থানা' },
-  { code: 'rajshahi-city-belpukur', upazilaCode: 'rajshahi-city', nameEn: 'Belpukur', nameBn: 'বেলপুকুর থানা' },
-  { code: 'rajshahi-city-rajshahi-airport', upazilaCode: 'rajshahi-city', nameEn: 'Rajshahi Airport', nameBn: 'রাজশাহী বিমানবন্দর থানা' },
-  { code: 'rajshahi-city-karnahar', upazilaCode: 'rajshahi-city', nameEn: 'Karnahar', nameBn: 'কর্ণহার থানা' },
-  { code: 'rajshahi-city-damkura', upazilaCode: 'rajshahi-city', nameEn: 'Damkura', nameBn: 'ডামকুড়া থানা' },
+  { code: 'rajshahi-city-boalia-model', upazilaCode: 'rajshahi-city', nameEn: 'Boalia Model', nameBn: 'বোয়ালিয়া মডেল' },
+  { code: 'rajshahi-city-rajpara', upazilaCode: 'rajshahi-city', nameEn: 'Rajpara', nameBn: 'রাজপাড়া' },
+  { code: 'rajshahi-city-motihar', upazilaCode: 'rajshahi-city', nameEn: 'Motihar', nameBn: 'মতিহার' },
+  { code: 'rajshahi-city-shah-makhdum', upazilaCode: 'rajshahi-city', nameEn: 'Shah Makhdum', nameBn: 'শাহ মখদুম' },
+  { code: 'rajshahi-city-chandrima', upazilaCode: 'rajshahi-city', nameEn: 'Chandrima', nameBn: 'চন্দ্রীমা' },
+  { code: 'rajshahi-city-kashiadanga', upazilaCode: 'rajshahi-city', nameEn: 'Kashiadanga', nameBn: 'কাশিয়াডাঙ্গা' },
+  { code: 'rajshahi-city-katakhali', upazilaCode: 'rajshahi-city', nameEn: 'Katakhali', nameBn: 'কাটাখালী' },
+  { code: 'rajshahi-city-belpukur', upazilaCode: 'rajshahi-city', nameEn: 'Belpukur', nameBn: 'বেলপুকুর' },
+  { code: 'rajshahi-city-rajshahi-airport', upazilaCode: 'rajshahi-city', nameEn: 'Rajshahi Airport', nameBn: 'রাজশাহী বিমানবন্দর' },
+  { code: 'rajshahi-city-karnahar', upazilaCode: 'rajshahi-city', nameEn: 'Karnahar', nameBn: 'কর্ণহার' },
+  { code: 'rajshahi-city-damkura', upazilaCode: 'rajshahi-city', nameEn: 'Damkura', nameBn: 'ডামকুড়া' },
   // sylhet-city
   { code: 'sylhet-city-kotwali-model', upazilaCode: 'sylhet-city', nameEn: 'Kotwali Model', nameBn: 'কোতোয়ালী মডেল' },
   { code: 'sylhet-city-shahporan-rh', upazilaCode: 'sylhet-city', nameEn: 'Shahporan (Rh.)', nameBn: 'শাহপরাণ' },
