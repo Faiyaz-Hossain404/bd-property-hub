@@ -1,11 +1,12 @@
 "use client"
 
-import { Building2 } from "lucide-react"
+import { Building2, Mail, Phone } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
-import { CONTACT_EMAIL } from "@/lib/contact"
+import { CONTACT_EMAIL, CONTACT_PHONES } from "@/lib/contact"
+import { PAGE_CONTAINER } from "@/lib/layout"
 
 // Site-wide marketing footer for the public surfaces (home, catalog, listing
 // detail). Deep-charcoal ground, white headings, muted-gray links, and a
@@ -18,8 +19,11 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-white/10 bg-stone-950 text-stone-400">
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr]">
+      {/* Kept deliberately slim — this is a marketing footer under a long
+          scrolling catalog, not a destination of its own, so it takes the least
+          vertical space that still reads as separate sections. */}
+      <div className={`${PAGE_CONTAINER} py-8`}>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr] lg:gap-8">
           {/* Brand + tagline */}
           <div>
             <div className="flex items-center gap-2.5">
@@ -30,11 +34,11 @@ export function SiteFooter() {
                 {tNav("brand")}
               </span>
             </div>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-stone-400">{t("tagline")}</p>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-stone-400">{t("tagline")}</p>
           </div>
 
           {/* Explore column — real routes only */}
-          <nav aria-label={t("exploreHeading")} className="flex flex-col gap-3">
+          <nav aria-label={t("exploreHeading")} className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
               {t("exploreHeading")}
             </h2>
@@ -50,7 +54,7 @@ export function SiteFooter() {
           </nav>
 
           {/* Get started column + honey-gold CTA */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
               {t("getStartedHeading")}
             </h2>
@@ -60,21 +64,35 @@ export function SiteFooter() {
             </Button>
           </div>
 
-          {/* Contact column */}
-          <div className="flex flex-col gap-3">
+          {/* Contact column — email plus the two voice lines, each icon-prefixed
+              so the block reads as one list rather than a bare link stack. The
+              icons are decorative: the link text already says what each one is,
+              so they stay aria-hidden instead of doubling the announcement. */}
+          <div className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold tracking-wide text-white uppercase">
               {t("contactHeading")}
             </h2>
             <a
               href={`mailto:${CONTACT_EMAIL}`}
-              className="text-sm wrap-break-word text-stone-400 transition-colors hover:text-white"
+              className="flex items-start gap-2 text-sm text-stone-400 transition-colors hover:text-white"
             >
-              {CONTACT_EMAIL}
+              <Mail className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="wrap-break-word">{CONTACT_EMAIL}</span>
             </a>
+            {CONTACT_PHONES.map((phone) => (
+              <a
+                key={phone}
+                href={`tel:${phone}`}
+                className="flex items-center gap-2 text-sm text-stone-400 transition-colors hover:text-white"
+              >
+                <Phone className="size-4 shrink-0" aria-hidden />
+                <span>{phone}</span>
+              </a>
+            ))}
           </div>
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-6">
+        <div className="mt-7 border-t border-white/10 pt-5">
           <p className="text-xs text-stone-400">
             © <span suppressHydrationWarning>{year}</span> {tNav("brand")}. {t("rights")}
           </p>

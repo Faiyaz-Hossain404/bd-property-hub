@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { PAGE_CONTAINER } from '@/lib/layout';
 
 // Stand-in for the public sticky header (SiteHeaderAuto) while a route loads.
 // The real header is rendered *inside* each public page (home, catalog, listing
@@ -8,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function HeaderSkeleton() {
   return (
     <div className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-sm backdrop-blur supports-backdrop-filter:bg-card/80">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className={`${PAGE_CONTAINER} flex h-16 items-center justify-between gap-4`}>
         <Skeleton className="h-7 w-32 rounded-lg" />
         <div className="hidden items-center gap-2 md:flex">
           <Skeleton className="h-8 w-20 rounded-full" />

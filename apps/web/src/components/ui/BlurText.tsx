@@ -162,24 +162,33 @@ const BlurText = ({
           ease: easing,
         };
 
+        // Each span is a flex item, so its trailing space is stripped by normal
+        // white-space processing (trailing spaces are removed at the end of a
+        // line box), so without a margin the words render as "Findpropertyin".
+        // Applied to every word but the last, so a trailing gap can't throw off
+        // centering or leave a stray space before the next inline element.
+        const isLastWord = index === elements.length - 1;
+        const spanClassName =
+          animateBy === 'words' && !isLastWord ? 'inline-block mr-[0.25em]' : 'inline-block';
+
         return (
           <motion.span
-            className="inline-block"
+            className={spanClassName}
             key={index}
             initial={fromSnapshot}
             animate={inView ? animateKeyframes : fromSnapshot}
             transition={spanTransition}
-            onAnimationComplete={
-              index === elements.length - 1 ? onAnimationComplete : undefined
-            }
+            onAnimationComplete={isLastWord ? onAnimationComplete : undefined}
           >
             {segment === ' ' ? '\u00A0' : segment}
-            {/* A real space, not nbsp: for words-mode instances this is real,
-                selectable/copyable text (the badge and subhead aren't
-                aria-hidden), and a copied U+00A0 silently fails exact-match
-                comparisons (search boxes, form fields) where a normal space
-                would match. */}
-            {animateBy === 'words' && index < elements.length - 1 && ' '}
+            {/* Kept alongside the margin above, which only creates the visual
+                gap: this is what makes the text copy out as "Find property in"
+                rather than one run-on word. A real space, not nbsp: for
+                words-mode instances this is real, selectable/copyable text (the
+                badge and subhead aren't aria-hidden), and a copied U+00A0
+                silently fails exact-match comparisons (search boxes, form
+                fields) where a normal space would match. */}
+            {animateBy === 'words' && !isLastWord && ' '}
           </motion.span>
         );
       })}

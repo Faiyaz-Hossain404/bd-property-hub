@@ -3,6 +3,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { ListingDetail } from '@/components/catalog/listing-detail';
 import { SiteHeaderAuto } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
+import { PAGE_CONTAINER } from '@/lib/layout';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -33,14 +34,21 @@ function buildBackQuery(params: SearchParams): string {
 }
 
 export default async function ListingDetailPage({ params, searchParams }: PageParams) {
-  const { locale, id } = await params;
+  // params and searchParams are independent promises, so they're awaited
+  // together. Awaiting them in sequence made the page wait out the slower one
+  // *after* the faster one had already resolved, for no reason — nothing here
+  // reads params to build searchParams or vice versa.
+  const [{ locale, id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const backQuery = buildBackQuery(await searchParams);
+  const backQuery = buildBackQuery(resolvedSearchParams);
 
   return (
-    <div className="min-h-screen bg-background">
+    // flex column + flex-1 on <main> keeps the footer flush to the bottom on
+    // short pages (a not-found or single-photo listing) instead of leaving blank
+    // background under it.
+    <div className="flex min-h-screen flex-col bg-background">
       <SiteHeaderAuto />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className={`${PAGE_CONTAINER} flex-1 py-10`}>
         <ListingDetail id={id} backQuery={backQuery} />
       </main>
 

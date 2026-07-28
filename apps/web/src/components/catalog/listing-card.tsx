@@ -27,9 +27,9 @@ type Props = {
 // Cloudinary delivery URLs working without remote-host config — the URLs already
 // carry f_auto,q_auto.
 //
-// The whole card is a link to the detail page. When the preview rail is visible
-// (`selectable`), a plain left-click previews in place instead; modifier-clicks
-// (new tab) and no-JS still follow the link, so it degrades cleanly.
+// The whole card is a link to the detail page. When `selectable`, a plain
+// left-click opens the quick-view modal instead; modifier-clicks (new tab),
+// keyboard activation, and no-JS still follow the link, so it degrades cleanly.
 export function ListingCard({ listing, saved, active, selectable, onSelect }: Props) {
   const t = useTranslations("catalog")
   const locale = useLocale()
@@ -45,7 +45,7 @@ export function ListingCard({ listing, saved, active, selectable, onSelect }: Pr
   const href = catalogQuery ? `/catalog/${listing.id}?${catalogQuery}` : `/catalog/${listing.id}`
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    // Only a plain primary-button POINTER click previews in place. `detail === 0`
+    // Only a plain primary-button POINTER click opens the modal. `detail === 0`
     // means the click was synthesised by the keyboard (Enter on the focused link)
     // or assistive tech — let those navigate to the detail page as a link should.
     // Modifier / middle clicks also fall through so "open in new tab" keeps working.

@@ -1,5 +1,6 @@
 import { HeaderSkeleton } from '@/components/layout/header-skeleton';
 import { ListingDetailSkeleton } from '@/components/catalog/listing-detail-skeleton';
+import { PAGE_CONTAINER } from '@/lib/layout';
 
 // Route-level loading UI for a listing detail page — the brief RSC/hydration
 // flash. ListingDetail's own "loading" branch (the actual, longer wait for its
@@ -9,7 +10,7 @@ export default function ListingDetailLoading() {
   return (
     <div className="min-h-screen bg-background">
       <HeaderSkeleton />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className={`${PAGE_CONTAINER} py-10`}>
         <ListingDetailSkeleton />
       </main>
     </div>

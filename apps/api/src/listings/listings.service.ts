@@ -65,7 +65,32 @@ export class ListingsService {
     private readonly users: UsersService,
   ) {}
 
+  /**
+   * The FR-S8 seller-verification gate, shared by the two actions that can start
+   * a listing on its way to the public catalog: creating a draft and submitting
+   * one for review. Kept in one place so the pair cannot drift — a gate enforced
+   * on submit but not on create is the kind of gap that only shows up when
+   * someone calls the API directly.
+   *
+   * Switchable via REQUIRE_SELLER_VERIFICATION, which defaults to on: only the
+   * literal string 'false' opts out, so a missing or malformed value keeps the
+   * gate closed. The caller supplies the message because the two actions fail
+   * for the same reason but at different moments, and a seller who is told
+   * "cannot submit" while being blocked from *creating* has been misled.
+   */
+  private async assertSellerVerified(ownerId: string, message: string): Promise<void> {
+    if (process.env.REQUIRE_SELLER_VERIFICATION === 'false') return;
+    const owner = await this.users.findById(ownerId);
+    if (!owner || !canSubmitListings(owner.kycStatus)) {
+      throw new ForbiddenException(message);
+    }
+  }
+
   async createDraft(ownerId: string, input: CreateListingInput): Promise<ListingDocument> {
+    await this.assertSellerVerified(
+      ownerId,
+      'Seller verification required to create property drafts',
+    );
     const location = input.location
       ? this.toLocationSubdoc(await this.geo.resolveListingLocation(input.location))
       : null;
@@ -133,14 +158,16 @@ export class ListingsService {
   // amount) drop out whenever either bound is set — intended.
   //
   // Sort (DISC-2): `newest` keeps the keyset cursor over (createdAt desc, _id desc).
-  // The price sorts use OFFSET pagination instead, because a keyset over a nullable
-  // numeric field is unsafe — MongoDB range operators are type-bracketed, so a
-  // numeric keyset bound never matches null-priced rows and would strand the
-  // "price on request" listings after page one. Offset re-runs a stable sort each
-  // page, so nulls stay put (Mongo orders null lowest: they land first under
-  // price_asc, last under price_desc). The cursor is opaque either way, so this
-  // split is invisible to clients and can move to keyset later. Index tuning for
-  // facets/price belongs to the Phase-2 search/caching item.
+  // Every other sort uses OFFSET pagination instead. For price that's a
+  // correctness requirement, not a shortcut: a keyset over a nullable numeric
+  // field is unsafe — MongoDB range operators are type-bracketed, so a numeric
+  // keyset bound never matches null-priced rows and would strand the "price on
+  // request" listings after page one. Offset re-runs a stable sort each page, so
+  // nulls stay put (Mongo orders null lowest: they land first under price_asc,
+  // last under price_desc). The title sorts ride the same path for consistency —
+  // one paging shape for every non-default sort. The cursor is opaque either way,
+  // so this split is invisible to clients and can move to keyset later. Index
+  // tuning for facets/price/title belongs to the Phase-2 search/caching item.
   async findPublicPage(
     query: PublicListingQuery,
   ): Promise<{ items: ListingDocument[]; nextCursor: string | null }> {
@@ -193,15 +220,20 @@ export class ListingsService {
       filter.$and = [{ $or: [{ titleEn: pattern }, { titleBn: pattern }] }];
     }
 
-    if (sort === 'price_asc' || sort === 'price_desc') {
-      const dir = sort === 'price_asc' ? 1 : -1;
+    if (sort !== 'newest') {
+      const dir = sort === 'price_asc' || sort === 'title_asc' ? 1 : -1;
+      const byTitle = sort === 'title_asc' || sort === 'title_desc';
       const offset = cursor ? this.decodeOffsetCursor(cursor) : 0;
-      const docs = await this.listingModel
-        .find(filter)
-        .sort({ 'pricing.amountBdt': dir, _id: dir })
-        .skip(offset)
-        .limit(limit + 1)
-        .exec();
+      const order: Record<string, 1 | -1> = byTitle
+        ? { titleEn: dir, _id: dir }
+        : { 'pricing.amountBdt': dir, _id: dir };
+      const page = this.listingModel.find(filter).sort(order).skip(offset).limit(limit + 1);
+      // Titles are free text, so Mongo's default byte-order sort would put every
+      // capitalised title ahead of every lowercase one ("Zamindar House" before
+      // "apartment in Banani"). Strength 2 compares case-insensitively, which is
+      // what "A to Z" means to a reader. Only the title sorts need it — the price
+      // sort is numeric, and a collation there would just cost an in-memory sort.
+      const docs = await (byTitle ? page.collation({ locale: 'en', strength: 2 }) : page).exec();
       const hasMore = docs.length > limit;
       const items = hasMore ? docs.slice(0, limit) : docs;
       const nextCursor = hasMore ? this.encodeOffsetCursor(offset + limit) : null;
@@ -377,15 +409,59 @@ export class ListingsService {
     // authenticated caller — findOwnedOrThrow already proved they own the listing —
     // so this checks the right person. The web mirrors this to disable Submit, but
     // this is the authoritative check.
-    const owner = await this.users.findById(ownerId);
-    if (!owner || !canSubmitListings(owner.kycStatus)) {
-      throw new ForbiddenException('Complete seller verification before submitting a listing for review');
-    }
+    await this.assertSellerVerified(
+      ownerId,
+      'Complete seller verification before submitting a listing for review',
+    );
     const gaps = listingCompletenessGaps(listing);
     if (gaps.length > 0) {
       throw new BadRequestException(`Add the listing's ${gaps.join(' and ')} before submitting for review`);
     }
     return this.transitionStatus(listing, 'pending_review', ownerId, null);
+  }
+
+  // Owner deleting a draft outright. This is a hard delete, not a status change,
+  // because the thing being deleted has never been public and has no moderation
+  // record — there is no audit trail for a soft flag to protect.
+  //
+  // That last clause is the whole gate, and it is stricter than "status is
+  // draft". `restore()` puts an archived listing BACK into draft, so a listing
+  // that was approved, went live, and was withdrawn also reads as a draft — and
+  // that one does have a status history staff rely on. So the rule is "never been
+  // submitted": draft status AND zero history rows. Anything else is withdraw's
+  // or takedown's job. Do not relax this to a bare status check.
+  async deleteDraft(ownerId: string, listingId: string): Promise<void> {
+    const listing = await this.findOwnedOrThrow(ownerId, listingId);
+    if (listing.publicationStatus !== 'draft') {
+      throw new ConflictException(`Cannot delete a listing in status "${listing.publicationStatus}"`);
+    }
+    const historyCount = await this.statusHistoryModel
+      .countDocuments({ listingId: listing._id })
+      .exec();
+    if (historyCount > 0) {
+      throw new ConflictException(
+        'This listing has already been through review and cannot be deleted. Archive it instead.',
+      );
+    }
+
+    // The status is re-asserted in the delete filter so a submit landing from
+    // another tab between the check above and this line loses the race rather
+    // than having its listing deleted out from under it.
+    const result = await this.listingModel
+      .deleteOne({ _id: listing._id, publicationStatus: 'draft' })
+      .exec();
+    if (result.deletedCount === 0) {
+      throw new ConflictException('This listing changed while you were deleting it. Try again.');
+    }
+
+    // Belt and braces for that same race: if a history row did get written, it
+    // would otherwise outlive the listing it points at.
+    await this.statusHistoryModel.deleteMany({ listingId: listing._id }).exec();
+
+    // The DB (source of truth) is already updated, so the Cloudinary binaries are
+    // cleaned up best-effort — deleteMediaAsset logs and swallows its own
+    // failures rather than failing a delete that has already happened.
+    await Promise.all(listing.media.map((item) => this.deleteMediaAsset(item)));
   }
 
   // Admin/super-admin approving a pending submission (FR-A6).

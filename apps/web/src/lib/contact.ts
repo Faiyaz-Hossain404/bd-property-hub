@@ -9,6 +9,15 @@ export const CONTACT_EMAIL = 'shafiarifbd@yahoo.com';
 export const WHATSAPP_SELLER_SUPPORT = '8801634346934';
 export const WHATSAPP_BUYER_SUPPORT = '8801634346936';
 
+// The same two lines, shaped for tel: links in the footer — one set of phones for
+// the business, so changing a number above updates both the WhatsApp desks and
+// the footer at once. Kept with the leading '+' because tel: wants E.164;
+// whatsappUrl() strips it back to digits for wa.me.
+export const CONTACT_PHONES = [
+  `+${WHATSAPP_SELLER_SUPPORT}`,
+  `+${WHATSAPP_BUYER_SUPPORT}`,
+] as const;
+
 // Build a https://wa.me/<number> deep link, optionally pre-filling the chat with
 // `message`. The number is reduced to digits (wa.me rejects '+'/spaces) and the
 // message is percent-encoded, so a message containing spaces or a listing title
