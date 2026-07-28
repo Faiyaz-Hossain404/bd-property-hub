@@ -479,8 +479,8 @@
     "attributes": {
       "rooms": "{count, plural, =1 {১টি রুম} other {#টি রুম}}",
       "washrooms": "{count, plural, =1 {১টি বাথরুম} other {#টি বাথরুম}}",
-      "areaSqft": "{value} বর্গফুট",
-      "landSize": "{value} {unit}",
+      "areaSqft": "আয়তন: {value} বর্গফুট",
+      "landSize": "জমি: {value} {unit}",
       "facing": "{facing}মুখী"
     },
     "facings": {

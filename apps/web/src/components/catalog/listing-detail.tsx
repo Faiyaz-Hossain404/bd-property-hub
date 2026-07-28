@@ -31,6 +31,15 @@ type State =
   | { status: "notFound" }
   | { status: "ready"; listing: PublicListing }
 
+// The two primary actions sit side by side, so their geometry lives in one
+// constant handed to both instead of being typed twice and drifting apart.
+// `h-auto` matters: every Button size variant pins an explicit `h-*`, which would
+// otherwise win over the padding and leave the two buttons different heights.
+const ACTION_BUTTON = "h-auto rounded-lg px-5 py-2.5 text-base font-semibold"
+// WhatsApp's brand green, not a theme token — this button is recognised by its
+// colour, and a palette change should not repaint it into something else.
+const WHATSAPP_BRAND = "bg-[#25D366] text-white hover:bg-[#20bd5a]"
+
 // backQuery is the catalog's own query string (facets + sort), forwarded from the
 // card the buyer clicked. Empty for a deep-linked detail page, where we fall back
 // to the unfiltered catalog.
@@ -138,9 +147,9 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
               number={WHATSAPP_BUYER_SUPPORT}
               label={tWhatsapp("inquireCta")}
               message={tWhatsapp("buyerInquiry", { title })}
-              size="sm"
+              className={`${ACTION_BUTTON} ${WHATSAPP_BRAND}`}
             />
-            <SaveListingButton listingId={listing.id} />
+            <SaveListingButton listingId={listing.id} className={ACTION_BUTTON} />
           </div>
 
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -165,36 +174,43 @@ export function ListingDetail({ id, backQuery }: { id: string; backQuery: string
               </ul>
             </div>
           ) : null}
+
+          {/* Description and map sit in this column directly under Details rather
+              than below the gallery. Below the gallery they started after the full
+              height of a large photo, so on a desktop viewport the buyer scrolled
+              past a screen of empty column to reach them — the facts about the
+              property now read as one continuous block beside the photos. */}
+          {description ? (
+            <div>
+              <h2 className="font-heading text-sm font-semibold text-foreground">
+                {t("descriptionTitle")}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+                {description}
+              </p>
+            </div>
+          ) : null}
+
+          {/* Approximate map (MAP-2): the API only ever sends the fuzzed displayPoint,
+              so this map is honest by construction — the circle marks "around here",
+              never the address. */}
+          {listing.displayPoint ? (
+            <div>
+              <h2 className="font-heading text-sm font-semibold text-foreground">
+                {t("mapTitle")}
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">{t("mapApproximateNote")}</p>
+              <LocationMap
+                center={listing.displayPoint}
+                zoom={14}
+                marker={listing.displayPoint}
+                circleRadiusMeters={PIN_FUZZ_MAX_METERS}
+                className="mt-3 h-72 w-full overflow-hidden rounded-xl border border-border/60"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
-
-      {description ? (
-        <div className="max-w-3xl">
-          <h2 className="font-heading text-lg font-semibold text-foreground">
-            {t("descriptionTitle")}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
-            {description}
-          </p>
-        </div>
-      ) : null}
-
-      {/* Approximate map (MAP-2): the API only ever sends the fuzzed displayPoint,
-          so this map is honest by construction — the circle marks "around here",
-          never the address. */}
-      {listing.displayPoint ? (
-        <div className="max-w-3xl">
-          <h2 className="font-heading text-lg font-semibold text-foreground">{t("mapTitle")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t("mapApproximateNote")}</p>
-          <LocationMap
-            center={listing.displayPoint}
-            zoom={14}
-            marker={listing.displayPoint}
-            circleRadiusMeters={PIN_FUZZ_MAX_METERS}
-            className="mt-3 h-72 w-full overflow-hidden rounded-xl border border-border/60"
-          />
-        </div>
-      ) : null}
 
       {/* Staff-only takedown panel (MOD-3). Renders nothing for buyers. */}
       <div className="max-w-3xl">

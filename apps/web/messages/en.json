@@ -479,8 +479,8 @@
     "attributes": {
       "rooms": "{count, plural, =1 {1 room} other {# rooms}}",
       "washrooms": "{count, plural, =1 {1 bath} other {# baths}}",
-      "areaSqft": "{value} sqft",
-      "landSize": "{value} {unit}",
+      "areaSqft": "Area: {value} sqft",
+      "landSize": "Land: {value} {unit}",
       "facing": "{facing}-facing"
     },
     "facings": {

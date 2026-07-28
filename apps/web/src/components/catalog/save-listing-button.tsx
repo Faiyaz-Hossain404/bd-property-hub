@@ -7,6 +7,7 @@ import { Heart, LoaderCircle } from "lucide-react"
 import { ApiError, getSavedListingIds, saveListing, unsaveListing } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Link } from "@/i18n/navigation"
+import { cn } from "@/lib/utils"
 import { useCurrentUser } from "@/hooks/use-current-user"
 
 // Save/unsave toggle for a single listing on the public detail page. Favorites
@@ -14,7 +15,16 @@ import { useCurrentUser } from "@/hooks/use-current-user"
 // of a live toggle. For a signed-in buyer we fetch their saved ids once to seed
 // the initial state, then toggle optimistically with rollback on failure — the
 // API enforces the real state (idempotent save/unsave scoped to the caller).
-export function SaveListingButton({ listingId }: { listingId: string }) {
+// `className` carries the geometry this button shares with the WhatsApp button it
+// sits beside — the two have to line up exactly, so the detail page owns those
+// classes and hands the same string to both rather than each guessing.
+export function SaveListingButton({
+  listingId,
+  className,
+}: {
+  listingId: string
+  className?: string
+}) {
   const t = useTranslations("catalog.save")
   const { status } = useCurrentUser()
   const [isSaved, setIsSaved] = useState<boolean | null>(null)
@@ -40,7 +50,7 @@ export function SaveListingButton({ listingId }: { listingId: string }) {
 
   if (status !== "authenticated") {
     return (
-      <Button asChild variant="outline" size="sm" className="w-fit">
+      <Button asChild variant="outline" className={cn("w-fit", className)}>
         <Link href="/login">
           <Heart className="size-4" />
           {t("signInToSave")}
@@ -70,8 +80,7 @@ export function SaveListingButton({ listingId }: { listingId: string }) {
       <Button
         type="button"
         variant={isSaved ? "default" : "outline"}
-        size="sm"
-        className="w-fit"
+        className={cn("w-fit", className)}
         onClick={handleToggle}
         disabled={isSaved === null || isPending}
         aria-pressed={isSaved === true}
